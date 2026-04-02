@@ -245,6 +245,8 @@
         <button class="btn btn-secondary" onclick="saveOffer()" id="btn-save">Save Offer</button>
         <div style="height:12px"></div>
         <button class="btn btn-primary" onclick="generateOffer()" id="btn-generate">Generate Offer PDF</button>
+        <div style="height:24px"></div>
+        <button class="btn" style="background:#fff;border:1px solid #dc3545;color:#dc3545;width:100%;" onclick="deleteOffer()" id="btn-delete">Delete Offer</button>
       </div>
     </div>
 
@@ -525,6 +527,34 @@
         toast('Error: ' + err.message);
       }
       $('btn-generate').disabled = false;
+    }
+
+    // ── Delete offer ──────────────────────────────────────
+    async function deleteOffer() {
+      if (!currentOffer || !currentOffer._rowIndex) {
+        toast('Nothing to delete — offer not yet saved.');
+        return;
+      }
+      if (!confirm('Are you sure you want to delete this offer?')) return;
+
+      $('btn-delete').disabled = true;
+      try {
+        const res = await fetch('/api/offers', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ _rowIndex: currentOffer._rowIndex }),
+        });
+        const result = await res.json();
+        if (result.success) {
+          toast('Offer deleted.');
+          showHome();
+        } else {
+          toast('Error: ' + (result.error || 'Unknown'));
+        }
+      } catch (err) {
+        toast('Error: ' + err.message);
+      }
+      $('btn-delete').disabled = false;
     }
 
     // ── Navigation ────────────────────────────────────────

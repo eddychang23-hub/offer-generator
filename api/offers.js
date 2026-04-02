@@ -119,5 +119,26 @@ module.exports = async function handler(req, res) {
     }
   }
 
+  if (req.method === 'DELETE') {
+    try {
+      const { _rowIndex } = req.body;
+      if (!_rowIndex) {
+        return res.status(400).json({ error: 'Missing _rowIndex' });
+      }
+      // Clear the row (keeps row number intact so other rows aren't shifted)
+      const emptyRow = OFFERS_HEADERS.map(() => '');
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `Offers!A${_rowIndex}:BC${_rowIndex}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [emptyRow] },
+      });
+      return res.status(200).json({ success: true, action: 'deleted' });
+    } catch (err) {
+      console.error('Error deleting offer:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   return res.status(405).json({ error: 'Method not allowed' });
 };
