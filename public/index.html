@@ -25,6 +25,12 @@
       font-size: 1rem; background: #1e1e1e; color: #e0e0e0; margin-bottom: 12px;
     }
     input:focus, select:focus, textarea:focus { outline: none; border-color: #4a90d9; box-shadow: 0 0 0 2px rgba(74,144,217,0.3); }
+    input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus,
+    textarea:-webkit-autofill, select:-webkit-autofill {
+      -webkit-box-shadow: 0 0 0px 1000px #1e1e1e inset !important;
+      -webkit-text-fill-color: #e0e0e0 !important;
+      border-color: #444 !important;
+    }
     input[type="number"] { cursor: pointer; }
     input[type="number"]:focus { /* select all on focus handled by JS */ }
     textarea { resize: vertical; min-height: 60px; }
