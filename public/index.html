@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offer Generator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8f9fa;
+      color: #1a1a1a;
+      padding: 16px;
+    }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 1.6rem; margin-bottom: 8px; }
+    h2 { font-size: 1.2rem; margin: 24px 0 12px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 6px; }
+    h3 { font-size: 1rem; margin: 16px 0 8px; color: #555; }
+    .divider { border-top: 1px solid #e0e0e0; margin: 20px 0; }
+
+    /* Form elements */
+    label { display: block; font-size: 0.85rem; font-weight: 600; color: #444; margin-bottom: 4px; }
+    input, select, textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px;
+      font-size: 1rem; background: #fff; margin-bottom: 12px;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #4a90d9; box-shadow: 0 0 0 2px rgba(74,144,217,0.2); }
+    input[type="number"] { cursor: pointer; }
+    input[type="number"]:focus { /* select all on focus handled by JS */ }
+    textarea { resize: vertical; min-height: 60px; }
+
+    /* Row layouts */
+    .row { display: flex; gap: 12px; }
+    .row > * { flex: 1; }
+    .row-3 > *:first-child { flex: 0.8; }
+    .row-deposit > *:nth-child(1) { flex: 1.5; }
+
+    /* Checkbox */
+    .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .checkbox-row input[type="checkbox"] { width: auto; margin: 0; transform: scale(1.2); }
+    .checkbox-row label { margin: 0; font-weight: 500; }
+
+    /* Buttons */
+    .btn {
+      display: inline-block; padding: 12px 24px; border: none; border-radius: 6px;
+      font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s;
+    }
+    .btn-primary { background: #ff4b4b; color: #fff; width: 100%; }
+    .btn-primary:hover { background: #e03e3e; }
+    .btn-secondary { background: #4a90d9; color: #fff; width: 100%; }
+    .btn-secondary:hover { background: #3a7bc8; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Status cards */
+    .offer-card {
+      background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+      padding: 16px; margin-bottom: 12px; cursor: pointer; transition: box-shadow 0.2s;
+    }
+    .offer-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .offer-card .status {
+      display: inline-block; padding: 2px 8px; border-radius: 12px;
+      font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+    }
+    .status-extracting { background: #fff3cd; color: #856404; }
+    .status-ready { background: #d4edda; color: #155724; }
+    .status-saved { background: #cce5ff; color: #004085; }
+    .status-complete { background: #d1ecf1; color: #0c5460; }
+
+    /* Sections */
+    .section { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+
+    /* Hidden */
+    .hidden { display: none; }
+
+    /* Loading spinner */
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #ccc; border-top-color: #4a90d9; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #333; color: #fff; padding: 12px 24px; border-radius: 8px;
+      font-size: 0.9rem; z-index: 100; opacity: 0; transition: opacity 0.3s;
+    }
+    .toast.show { opacity: 1; }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .row { flex-direction: column; gap: 0; }
+      .row-keep { flex-direction: row; gap: 12px; }
+      h1 { font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Offer Generator</h1>
+
+    <!-- ── VIEW: HOME ─────────────────────────────────────── -->
+    <div id="view-home">
+      <h2>My Offers</h2>
+      <div id="offers-list"><div class="spinner"></div> Loading...</div>
+
+      <h2>Start New Offer</h2>
+      <div id="tours-list"><div class="spinner"></div> Loading tours...</div>
+    </div>
+
+    <!-- ── VIEW: FORM ─────────────────────────────────────── -->
+    <div id="view-form" class="hidden">
+      <button class="btn" style="background:#eee;color:#333;margin-bottom:16px;width:auto;padding:8px 16px;" onclick="showHome()">← Back</button>
+
+      <!-- Property Details -->
+      <div class="section">
+        <h2>Property Details</h2>
+        <div class="row row-3">
+          <div><label>Street #</label><input id="street_num" type="text"></div>
+          <div style="flex:2"><label>Street</label><input id="street" type="text"></div>
+          <div><label>City</label><input id="city" type="text"></div>
+          <div><label>Postal Code</label><input id="zipcode" type="text"></div>
+        </div>
+        <h3>Legal Description</h3>
+        <div class="row">
+          <div><label>Plan</label><input id="plan" type="text"></div>
+          <div><label>Block</label><input id="block" type="text"></div>
+          <div><label>Lot</label><input id="lot" type="text"></div>
+        </div>
+        <label>Inclusions</label>
+        <textarea id="inclusions" rows="3"></textarea>
+        <label>Exclusions</label>
+        <textarea id="exclusions" rows="3"></textarea>
+      </div>
+
+      <!-- Deal Terms -->
+      <div class="section">
+        <h2>Deal Terms</h2>
+        <label>Contract Number</label>
+        <input id="contract_number" type="text" placeholder="Appears top-right of every page">
+        <h3>Buyer</h3>
+        <label>Buyer 1 Name</label>
+        <input id="buyer1" type="text">
+        <label>Buyer 2 Name (optional)</label>
+        <input id="buyer2" type="text">
+        <label>Purchase Price ($)</label>
+        <input id="purchase_price" type="number" step="1000">
+        <label>Closing Date</label>
+        <input id="closing_date" type="date">
+      </div>
+
+      <!-- Deposit -->
+      <div class="section">
+        <h2>Deposit</h2>
+        <div class="row row-deposit">
+          <div><label>Amount ($)</label><input id="deposit_amount" type="number" value="10000" step="500"></div>
+          <div><label>Due Date</label><input id="deposit_date" type="date"></div>
+          <div><label>Due Time</label><input id="deposit_time" type="time" value="17:00"></div>
+        </div>
+        <div class="row">
+          <div><label>Method</label><input id="deposit_method" type="text" value="Certified funds or EFT"></div>
+          <div><label>Trustee</label><input id="trustee" type="text"></div>
+        </div>
+      </div>
+
+      <!-- Conditions -->
+      <div class="section">
+        <h2>Conditions</h2>
+        <h3>Buyer's Conditions</h3>
+        <div class="checkbox-row"><input type="checkbox" id="financing"><label for="financing">Financing Condition</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="inspection"><label for="inspection">Inspection Condition</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="buyer_sale"><label for="buyer_sale">Buyer Property Sale Condition</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="additional_condition"><label for="additional_condition">Additional Buyer Condition</label></div>
+        <div id="additional_condition_wrap" class="hidden">
+          <label>Condition Description</label>
+          <textarea id="additional_condition_text"></textarea>
+        </div>
+        <div id="buyer_condition_dates" class="hidden">
+          <div class="row">
+            <div><label>Condition Deadline Date</label><input id="condition_date" type="date"></div>
+            <div><label>Condition Deadline Time</label><input id="condition_time" type="time" value="21:00"></div>
+          </div>
+        </div>
+
+        <h3>Seller's Conditions</h3>
+        <div class="checkbox-row"><input type="checkbox" id="seller_condition"><label for="seller_condition">Seller's Condition</label></div>
+        <div id="seller_condition_wrap" class="hidden">
+          <label>Seller's Condition Description</label>
+          <textarea id="seller_condition_text"></textarea>
+          <div class="row">
+            <div><label>Deadline Date</label><input id="seller_condition_date" type="date"></div>
+            <div><label>Deadline Time</label><input id="seller_condition_time" type="time" value="21:00"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Other Terms -->
+      <div class="section">
+        <h2>Other Terms</h2>
+        <div class="checkbox-row"><input type="checkbox" id="term_title_insurance"><label for="term_title_insurance">Buyer accepts title insurance in lieu of an RPR at the seller's expense</label></div>
+        <div id="title_ins_wrap" class="hidden">
+          <label>Maximum amount (leave blank for no cap)</label>
+          <input id="title_insurance_max" type="text" placeholder="e.g. 350">
+        </div>
+        <div class="checkbox-row"><input type="checkbox" id="term_cleaning"><label for="term_cleaning">Seller to have home professionally cleaned and all belongings/garbage removed prior to possession</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="term_walkthrough"><label for="term_walkthrough">Buyer allowed a walkthrough 24-48 hours prior to possession</label></div>
+        <label>Additional Terms</label>
+        <textarea id="additional_terms" placeholder="Enter any additional terms..."></textarea>
+      </div>
+
+      <!-- Offer Expiry -->
+      <div class="section">
+        <h2>Offer Expiry</h2>
+        <div class="checkbox-row"><input type="checkbox" id="has_expiry"><label for="has_expiry">Set Offer Expiry</label></div>
+        <div id="expiry_wrap" class="hidden">
+          <div class="row">
+            <div><label>Expiry Date</label><input id="expiry_date" type="date"></div>
+            <div><label>Expiry Time</label><input id="expiry_time" type="time" value="23:59"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seller & Listing Brokerage -->
+      <div class="section">
+        <h2>Seller & Listing Brokerage</h2>
+        <label>Seller 1</label><input id="seller1" type="text">
+        <label>Seller 2</label><input id="seller2" type="text">
+        <label>Listing Brokerage</label><input id="listing_broker" type="text">
+        <label>Listing Agent</label><input id="listing_agent" type="text">
+        <label>Agent Phone</label><input id="listing_agent_ph" type="text">
+        <label>Agent Email</label><input id="listing_agent_email" type="text">
+        <label>Brokerage Providing Closing Docs</label>
+        <select id="closing_docs">
+          <option value="seller's">seller's</option>
+          <option value="buyer's">buyer's</option>
+        </select>
+        <div class="checkbox-row"><input type="checkbox" id="dower"><label for="dower">Dower Applies</label></div>
+        <div id="dower_wrap" class="hidden">
+          <div class="row">
+            <div><label>Dower Date</label><input id="dower_date" type="date"></div>
+            <div><label>Dower Time</label><input id="dower_time" type="time" value="12:00"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="section">
+        <button class="btn btn-secondary" onclick="saveOffer()" id="btn-save">Save Offer</button>
+        <div style="height:12px"></div>
+        <button class="btn btn-primary" onclick="generateOffer()" id="btn-generate">Generate Offer PDF</button>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script>
+    // ── State ──────────────────────────────────────────────
+    let currentOffer = null;
+    let toursData = [];
+
+    // ── Helpers ────────────────────────────────────────────
+    function $(id) { return document.getElementById(id); }
+
+    function toast(msg) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    function businessDaysFromToday(n) {
+      const d = new Date();
+      let added = 0;
+      while (added < n) {
+        d.setDate(d.getDate() + 1);
+        if (d.getDay() !== 0 && d.getDay() !== 6) added++;
+      }
+      return d.toISOString().slice(0, 10);
+    }
+
+    function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+    function formatDate(d) { return d.toISOString().slice(0, 10); }
+
+    // Select all on focus for number inputs
+    document.addEventListener('focusin', e => {
+      if (e.target && e.target.type === 'number') {
+        setTimeout(() => e.target.select(), 10);
+      }
+    });
+
+    // ── Toggle visibility for conditional fields ──────────
+    function setupToggles() {
+      const toggles = [
+        { checkbox: 'additional_condition', target: 'additional_condition_wrap' },
+        { checkbox: 'seller_condition', target: 'seller_condition_wrap' },
+        { checkbox: 'term_title_insurance', target: 'title_ins_wrap' },
+        { checkbox: 'has_expiry', target: 'expiry_wrap' },
+        { checkbox: 'dower', target: 'dower_wrap' },
+      ];
+      toggles.forEach(({ checkbox, target }) => {
+        $(checkbox).addEventListener('change', () => {
+          $(target).classList.toggle('hidden', !$(checkbox).checked);
+        });
+      });
+
+      // Buyer condition dates — show if any buyer condition checked
+      const buyerConds = ['financing', 'inspection', 'buyer_sale', 'additional_condition'];
+      buyerConds.forEach(id => {
+        $(id).addEventListener('change', () => {
+          const anyChecked = buyerConds.some(c => $(c).checked);
+          $('buyer_condition_dates').classList.toggle('hidden', !anyChecked);
+        });
+      });
+    }
+
+    // ── Load tours and offers ─────────────────────────────
+    async function loadHome() {
+      try {
+        const [toursRes, offersRes] = await Promise.all([
+          fetch('/api/showings').then(r => r.json()),
+          fetch('/api/offers').then(r => r.json()),
+        ]);
+
+        toursData = toursRes.tours || [];
+        const offers = offersRes.offers || [];
+
+        // Render offers
+        const offersEl = $('offers-list');
+        if (offers.length === 0) {
+          offersEl.innerHTML = '<p style="color:#888">No offers yet.</p>';
+        } else {
+          offersEl.innerHTML = offers.map(o => `
+            <div class="offer-card" onclick="loadOffer(${JSON.stringify(o).replace(/"/g, '&quot;')})">
+              <span class="status status-${o.status}">${o.status}</span>
+              <strong style="margin-left:8px">${o.buyer1 || 'No buyer'}</strong>
+              <span style="color:#888;margin-left:8px">${o.street_num} ${o.street}</span>
+              <span style="float:right;color:#888">${o.mls}</span>
+            </div>
+          `).join('');
+        }
+
+        // Render tours
+        const toursEl = $('tours-list');
+        if (toursData.length === 0) {
+          toursEl.innerHTML = '<p style="color:#888">No showing tours found.</p>';
+        } else {
+          toursEl.innerHTML = toursData.map(t => `
+            <div style="margin-bottom:12px">
+              <strong>${t.buyer_name}</strong> — ${t.showing_date}
+              <span style="color:#888">(${t.properties.length} properties)</span>
+              <div style="margin-top:6px">
+                ${t.properties.map(p => `
+                  <button class="btn" style="background:#fff;border:1px solid #ccc;color:#333;padding:8px 12px;margin:4px 4px 4px 0;width:auto;font-size:0.85rem;"
+                    onclick='startOffer(${JSON.stringify(p).replace(/'/g, "&#39;")})'>
+                    ${p.address} — ${p.price}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        console.error(err);
+        $('offers-list').innerHTML = '<p style="color:red">Error loading data.</p>';
+        $('tours-list').innerHTML = '';
+      }
+    }
+
+    // ── Start new offer from a showing ────────────────────
+    function startOffer(property) {
+      currentOffer = {
+        offer_id: `${property.tour_id}-${property.mls}`,
+        status: 'ready',
+        tour_id: property.tour_id,
+        mls: property.mls,
+        // Pre-fill from showing data
+        street_num: '', street: '', city: '', zipcode: '',
+        plan: '', block: '', lot: '', inclusions: '', exclusions: '',
+        seller1: '', seller2: '',
+        listing_broker: property.listing_brokerage || '',
+        listing_agent: property.listing_agent || '',
+        listing_agent_ph: '', listing_agent_email: '',
+        // Defaults
+        purchase_price: property.price ? property.price.replace(/[$,]/g, '') : '',
+        closing_docs: "seller's",
+        deposit_amount: '10000',
+        deposit_date: businessDaysFromToday(3),
+        deposit_time: '17:00',
+        deposit_method: 'Certified funds or EFT',
+        trustee: property.listing_brokerage || '',
+        condition_date: businessDaysFromToday(10),
+        condition_time: '21:00',
+      };
+
+      populateForm(currentOffer);
+      showForm();
+
+      // Trigger extraction on desktop
+      saveOffer('extracting');
+      toast('Offer created — extraction will run on desktop');
+    }
+
+    // ── Load existing offer into form ─────────────────────
+    function loadOffer(offer) {
+      currentOffer = offer;
+      populateForm(offer);
+      showForm();
+    }
+
+    // ── Populate form fields from data ────────────────────
+    function populateForm(data) {
+      const fields = [
+        'street_num', 'street', 'city', 'zipcode', 'plan', 'block', 'lot',
+        'inclusions', 'exclusions', 'contract_number', 'buyer1', 'buyer2',
+        'purchase_price', 'closing_date', 'deposit_amount', 'deposit_date',
+        'deposit_time', 'deposit_method', 'trustee', 'additional_condition_text',
+        'condition_date', 'condition_time', 'seller_condition_text',
+        'seller_condition_date', 'seller_condition_time',
+        'title_insurance_max', 'additional_terms', 'expiry_date', 'expiry_time',
+        'seller1', 'seller2', 'listing_broker', 'listing_agent',
+        'listing_agent_ph', 'listing_agent_email', 'closing_docs',
+        'dower_date', 'dower_time',
+      ];
+      fields.forEach(f => {
+        const el = $(f);
+        if (el) {
+          if (el.tagName === 'SELECT') el.value = data[f] || el.options[0].value;
+          else el.value = data[f] || '';
+        }
+      });
+
+      // Checkboxes
+      const checkboxes = [
+        'financing', 'inspection', 'buyer_sale', 'additional_condition',
+        'seller_condition', 'term_title_insurance', 'term_cleaning',
+        'term_walkthrough', 'has_expiry', 'dower',
+      ];
+      checkboxes.forEach(c => {
+        const el = $(c);
+        if (el) el.checked = data[c] === 'TRUE' || data[c] === true;
+      });
+
+      // Trigger change events for toggles
+      checkboxes.forEach(c => $(c).dispatchEvent(new Event('change')));
+    }
+
+    // ── Gather form data ──────────────────────────────────
+    function gatherFormData() {
+      const data = { ...currentOffer };
+      const fields = [
+        'street_num', 'street', 'city', 'zipcode', 'plan', 'block', 'lot',
+        'inclusions', 'exclusions', 'contract_number', 'buyer1', 'buyer2',
+        'purchase_price', 'closing_date', 'deposit_amount', 'deposit_date',
+        'deposit_time', 'deposit_method', 'trustee', 'additional_condition_text',
+        'condition_date', 'condition_time', 'seller_condition_text',
+        'seller_condition_date', 'seller_condition_time',
+        'title_insurance_max', 'additional_terms', 'expiry_date', 'expiry_time',
+        'seller1', 'seller2', 'listing_broker', 'listing_agent',
+        'listing_agent_ph', 'listing_agent_email', 'closing_docs',
+        'dower_date', 'dower_time',
+      ];
+      fields.forEach(f => { data[f] = $(f) ? $(f).value : ''; });
+
+      const checkboxes = [
+        'financing', 'inspection', 'buyer_sale', 'additional_condition',
+        'seller_condition', 'term_title_insurance', 'term_cleaning',
+        'term_walkthrough', 'has_expiry', 'dower',
+      ];
+      checkboxes.forEach(c => { data[c] = $(c).checked ? 'TRUE' : 'FALSE'; });
+
+      return data;
+    }
+
+    // ── Save offer ────────────────────────────────────────
+    async function saveOffer(overrideStatus) {
+      const data = gatherFormData();
+      if (overrideStatus) data.status = overrideStatus;
+      else data.status = 'saved';
+
+      $('btn-save').disabled = true;
+      try {
+        const res = await fetch('/api/offers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        const result = await res.json();
+        if (result.success) {
+          toast('Offer saved!');
+          if (result.row) currentOffer._rowIndex = result.row;
+        } else {
+          toast('Error: ' + (result.error || 'Unknown'));
+        }
+      } catch (err) {
+        toast('Error saving: ' + err.message);
+      }
+      $('btn-save').disabled = false;
+    }
+
+    // ── Generate offer (signals desktop) ──────────────────
+    async function generateOffer() {
+      const data = gatherFormData();
+      data.status = 'generate';
+
+      $('btn-generate').disabled = true;
+      try {
+        const res = await fetch('/api/offers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        const result = await res.json();
+        if (result.success) {
+          toast('Generate requested! Desktop will produce the PDF.');
+        } else {
+          toast('Error: ' + (result.error || 'Unknown'));
+        }
+      } catch (err) {
+        toast('Error: ' + err.message);
+      }
+      $('btn-generate').disabled = false;
+    }
+
+    // ── Navigation ────────────────────────────────────────
+    function showHome() {
+      $('view-home').classList.remove('hidden');
+      $('view-form').classList.add('hidden');
+      loadHome();
+    }
+
+    function showForm() {
+      $('view-home').classList.add('hidden');
+      $('view-form').classList.remove('hidden');
+      window.scrollTo(0, 0);
+    }
+
+    // ── Init ──────────────────────────────────────────────
+    setupToggles();
+    loadHome();
+  </script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offer Generator — Preview</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8f9fa;
+      color: #1a1a1a;
+      padding: 16px;
+    }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 1.6rem; margin-bottom: 8px; }
+    h2 { font-size: 1.2rem; margin: 24px 0 12px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 6px; }
+    h3 { font-size: 1rem; margin: 16px 0 8px; color: #555; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; color: #444; margin-bottom: 4px; }
+    input, select, textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px;
+      font-size: 1rem; background: #fff; margin-bottom: 12px;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #4a90d9; box-shadow: 0 0 0 2px rgba(74,144,217,0.2); }
+    textarea { resize: vertical; min-height: 60px; }
+    .row { display: flex; gap: 12px; }
+    .row > * { flex: 1; }
+    .row-deposit > *:nth-child(1) { flex: 1.5; }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .checkbox-row input[type="checkbox"] { width: auto; margin: 0; transform: scale(1.2); }
+    .checkbox-row label { margin: 0; font-weight: 500; }
+    .btn {
+      display: inline-block; padding: 12px 24px; border: none; border-radius: 6px;
+      font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s;
+    }
+    .btn-primary { background: #ff4b4b; color: #fff; width: 100%; }
+    .btn-primary:hover { background: #e03e3e; }
+    .btn-secondary { background: #4a90d9; color: #fff; width: 100%; }
+    .btn-secondary:hover { background: #3a7bc8; }
+    .offer-card {
+      background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+      padding: 16px; margin-bottom: 12px; cursor: pointer; transition: box-shadow 0.2s;
+    }
+    .offer-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .status {
+      display: inline-block; padding: 2px 8px; border-radius: 12px;
+      font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+    }
+    .status-ready { background: #d4edda; color: #155724; }
+    .status-saved { background: #cce5ff; color: #004085; }
+    .section { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .hidden { display: none; }
+    .tour-property {
+      display: inline-block; background: #fff; border: 1px solid #ccc; color: #333;
+      padding: 8px 12px; margin: 4px 4px 4px 0; border-radius: 6px;
+      font-size: 0.85rem; cursor: pointer; transition: background 0.2s;
+    }
+    .tour-property:hover { background: #f0f0f0; }
+    @media (max-width: 600px) {
+      .row { flex-direction: column; gap: 0; }
+      h1 { font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Offer Generator</h1>
+
+    <!-- HOME VIEW -->
+    <div id="view-home">
+      <h2>My Offers</h2>
+      <div class="offer-card" onclick="document.getElementById('view-home').classList.add('hidden'); document.getElementById('view-form').classList.remove('hidden'); window.scrollTo(0,0);">
+        <span class="status status-saved">saved</span>
+        <strong style="margin-left:8px">Josiah Smith</strong>
+        <span style="color:#888;margin-left:8px">2423 205 ST NW</span>
+        <span style="float:right;color:#888">E4479610</span>
+      </div>
+      <div class="offer-card">
+        <span class="status status-ready">ready</span>
+        <strong style="margin-left:8px">Josiah Smith</strong>
+        <span style="color:#888;margin-left:8px">5016 KINNEY LI SW</span>
+        <span style="float:right;color:#888">E4476736</span>
+      </div>
+
+      <h2>Start New Offer</h2>
+      <div style="margin-bottom:12px">
+        <strong>Josiah</strong> — 2026-04-01
+        <span style="color:#888">(2 properties)</span>
+        <div style="margin-top:6px">
+          <span class="tour-property" onclick="document.getElementById('view-home').classList.add('hidden'); document.getElementById('view-form').classList.remove('hidden'); window.scrollTo(0,0);">5016 KINNEY LI SW — $569,900</span>
+          <span class="tour-property" onclick="document.getElementById('view-home').classList.add('hidden'); document.getElementById('view-form').classList.remove('hidden'); window.scrollTo(0,0);">2423 205 ST NW — $599,900</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FORM VIEW -->
+    <div id="view-form" class="hidden">
+      <button class="btn" style="background:#eee;color:#333;margin-bottom:16px;width:auto;padding:8px 16px;" onclick="document.getElementById('view-form').classList.add('hidden'); document.getElementById('view-home').classList.remove('hidden');">&#8592; Back</button>
+
+      <div class="section">
+        <h2>Property Details</h2>
+        <div class="row">
+          <div style="flex:0.8"><label>Street #</label><input type="text" value="2423"></div>
+          <div style="flex:2"><label>Street</label><input type="text" value="205 ST NW"></div>
+          <div><label>City</label><input type="text" value="Edmonton"></div>
+          <div><label>Postal Code</label><input type="text" value="T6M 1N6"></div>
+        </div>
+        <h3>Legal Description</h3>
+        <div class="row">
+          <div><label>Plan</label><input type="text" value="2221947"></div>
+          <div><label>Block</label><input type="text" value="19"></div>
+          <div><label>Lot</label><input type="text" value="14"></div>
+        </div>
+        <label>Inclusions</label>
+        <textarea rows="2">Dishwasher-Built-In, Dryer, Garage Control, Garage Opener, Hood Fan, Stove-Electric, Stove-Gas, Washer, Refrigerators-Two</textarea>
+        <label>Exclusions</label>
+        <textarea rows="2"></textarea>
+      </div>
+
+      <div class="section">
+        <h2>Deal Terms</h2>
+        <label>Contract Number</label>
+        <input type="text" placeholder="Appears top-right of every page">
+        <h3>Buyer</h3>
+        <label>Buyer 1 Name</label>
+        <input type="text" value="Josiah Smith">
+        <label>Buyer 2 Name (optional)</label>
+        <input type="text">
+        <label>Purchase Price ($)</label>
+        <input type="number" value="599900" step="1000">
+        <label>Closing Date</label>
+        <input type="date" value="2026-06-01">
+      </div>
+
+      <div class="section">
+        <h2>Deposit</h2>
+        <div class="row row-deposit">
+          <div><label>Amount ($)</label><input type="number" value="10000" step="500"></div>
+          <div><label>Due Date</label><input type="date" value="2026-04-07"></div>
+          <div><label>Due Time</label><input type="time" value="17:00"></div>
+        </div>
+        <div class="row">
+          <div><label>Method</label><input type="text" value="Certified funds or EFT"></div>
+          <div><label>Trustee</label><input type="text" value="Sterling Real Estate"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Conditions</h2>
+        <h3>Buyer's Conditions</h3>
+        <div class="checkbox-row"><input type="checkbox" id="p_financing" checked><label for="p_financing">Financing Condition</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="p_inspection" checked><label for="p_inspection">Inspection Condition</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="p_buyer_sale"><label for="p_buyer_sale">Buyer Property Sale Condition</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="p_additional"><label for="p_additional">Additional Buyer Condition</label></div>
+        <div class="row">
+          <div><label>Condition Deadline Date</label><input type="date" value="2026-04-16"></div>
+          <div><label>Condition Deadline Time</label><input type="time" value="21:00"></div>
+        </div>
+        <h3>Seller's Conditions</h3>
+        <div class="checkbox-row"><input type="checkbox" id="p_seller_cond"><label for="p_seller_cond">Seller's Condition</label></div>
+      </div>
+
+      <div class="section">
+        <h2>Other Terms</h2>
+        <div class="checkbox-row"><input type="checkbox" id="p_title" checked><label for="p_title">Buyer accepts title insurance in lieu of an RPR at the seller's expense</label></div>
+        <div><label>Maximum amount (leave blank for no cap)</label><input type="text" placeholder="e.g. 350" value="350"></div>
+        <div class="checkbox-row"><input type="checkbox" id="p_clean" checked><label for="p_clean">Seller to have home professionally cleaned and all belongings/garbage removed prior to possession</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="p_walk" checked><label for="p_walk">Buyer allowed a walkthrough 24-48 hours prior to possession</label></div>
+        <label>Additional Terms</label>
+        <textarea placeholder="Enter any additional terms..."></textarea>
+      </div>
+
+      <div class="section">
+        <h2>Offer Expiry</h2>
+        <div class="checkbox-row"><input type="checkbox" id="p_expiry"><label for="p_expiry">Set Offer Expiry</label></div>
+      </div>
+
+      <div class="section">
+        <h2>Seller & Listing Brokerage</h2>
+        <label>Seller 1</label><input type="text" value="Gurleen Kaur Mann">
+        <label>Seller 2</label><input type="text">
+        <label>Listing Brokerage</label><input type="text" value="Sterling Real Estate">
+        <label>Listing Agent</label><input type="text" value="Nadia Glavonjic">
+        <label>Agent Phone</label><input type="text" value="587-990-4777">
+        <label>Agent Email</label><input type="text" value="nadiaglavonjic@gmail.com">
+        <label>Brokerage Providing Closing Docs</label>
+        <select><option>seller's</option><option>buyer's</option></select>
+        <div class="checkbox-row"><input type="checkbox" id="p_dower"><label for="p_dower">Dower Applies</label></div>
+      </div>
+
+      <div class="section">
+        <button class="btn btn-secondary">Save Offer</button>
+        <div style="height:12px"></div>
+        <button class="btn btn-primary">Generate Offer PDF</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
