@@ -367,13 +367,20 @@
 
     // ── Start new offer from a showing ────────────────────
     function startOffer(property) {
+      // Parse address: split first token as street number, rest as street
+      const addrParts = (property.address || '').split(' ');
+      const streetNum = addrParts[0] || '';
+      const streetName = addrParts.slice(1).join(' ') || '';
+
       currentOffer = {
         offer_id: `${property.tour_id}-${property.mls}`,
         status: 'ready',
         tour_id: property.tour_id,
         mls: property.mls,
         // Pre-fill from showing data
-        street_num: '', street: '', city: '', zipcode: '',
+        street_num: streetNum,
+        street: streetName,
+        city: '', zipcode: '',
         plan: '', block: '', lot: '', inclusions: '', exclusions: '',
         seller1: '', seller2: '',
         listing_broker: property.listing_brokerage || '',
