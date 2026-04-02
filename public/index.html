@@ -8,23 +8,23 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f8f9fa;
-      color: #1a1a1a;
+      background: #121212;
+      color: #e0e0e0;
       padding: 16px;
     }
     .container { max-width: 800px; margin: 0 auto; }
-    h1 { font-size: 1.6rem; margin-bottom: 8px; }
-    h2 { font-size: 1.2rem; margin: 24px 0 12px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 6px; }
-    h3 { font-size: 1rem; margin: 16px 0 8px; color: #555; }
-    .divider { border-top: 1px solid #e0e0e0; margin: 20px 0; }
+    h1 { font-size: 1.6rem; margin-bottom: 8px; color: #f0f0f0; }
+    h2 { font-size: 1.2rem; margin: 24px 0 12px; color: #ccc; border-bottom: 2px solid #333; padding-bottom: 6px; }
+    h3 { font-size: 1rem; margin: 16px 0 8px; color: #999; }
+    .divider { border-top: 1px solid #333; margin: 20px 0; }
 
     /* Form elements */
-    label { display: block; font-size: 0.85rem; font-weight: 600; color: #444; margin-bottom: 4px; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; color: #aaa; margin-bottom: 4px; }
     input, select, textarea {
-      width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px;
-      font-size: 1rem; background: #fff; margin-bottom: 12px;
+      width: 100%; padding: 10px 12px; border: 1px solid #444; border-radius: 6px;
+      font-size: 1rem; background: #1e1e1e; color: #e0e0e0; margin-bottom: 12px;
     }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: #4a90d9; box-shadow: 0 0 0 2px rgba(74,144,217,0.2); }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #4a90d9; box-shadow: 0 0 0 2px rgba(74,144,217,0.3); }
     input[type="number"] { cursor: pointer; }
     input[type="number"]:focus { /* select all on focus handled by JS */ }
     textarea { resize: vertical; min-height: 60px; }
@@ -53,33 +53,33 @@
 
     /* Status cards */
     .offer-card {
-      background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+      background: #1e1e1e; border: 1px solid #333; border-radius: 8px;
       padding: 16px; margin-bottom: 12px; cursor: pointer; transition: box-shadow 0.2s;
     }
-    .offer-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .offer-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
     .offer-card .status {
       display: inline-block; padding: 2px 8px; border-radius: 12px;
       font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
     }
-    .status-extracting { background: #fff3cd; color: #856404; }
-    .status-ready { background: #d4edda; color: #155724; }
-    .status-saved { background: #cce5ff; color: #004085; }
-    .status-complete { background: #d1ecf1; color: #0c5460; }
+    .status-extracting { background: #3d3200; color: #ffd54f; }
+    .status-ready { background: #1b3a1b; color: #66bb6a; }
+    .status-saved { background: #0d2744; color: #64b5f6; }
+    .status-complete { background: #0d3340; color: #4dd0e1; }
 
     /* Sections */
-    .section { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .section { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
 
     /* Hidden */
     .hidden { display: none; }
 
     /* Loading spinner */
-    .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #ccc; border-top-color: #4a90d9; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #444; border-top-color: #4a90d9; border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Toast */
     .toast {
       position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      background: #333; color: #fff; padding: 12px 24px; border-radius: 8px;
+      background: #2a2a2a; color: #e0e0e0; padding: 12px 24px; border-radius: 8px; border: 1px solid #444;
       font-size: 0.9rem; z-index: 100; opacity: 0; transition: opacity 0.3s;
     }
     .toast.show { opacity: 1; }
@@ -107,7 +107,7 @@
 
     <!-- ── VIEW: FORM ─────────────────────────────────────── -->
     <div id="view-form" class="hidden">
-      <button class="btn" style="background:#eee;color:#333;margin-bottom:16px;width:auto;padding:8px 16px;" onclick="showHome()">← Back</button>
+      <button class="btn" style="background:#2a2a2a;color:#ccc;border:1px solid #444;margin-bottom:16px;width:auto;padding:8px 16px;" onclick="showHome()">← Back</button>
 
       <!-- Property Details -->
       <div class="section">
@@ -246,7 +246,7 @@
         <div style="height:12px"></div>
         <button class="btn btn-primary" onclick="generateOffer()" id="btn-generate">Generate Offer PDF</button>
         <div style="height:24px"></div>
-        <button class="btn" style="background:#fff;border:1px solid #dc3545;color:#dc3545;width:100%;" onclick="deleteOffer()" id="btn-delete">Delete Offer</button>
+        <button class="btn" style="background:#1e1e1e;border:1px solid #dc3545;color:#dc3545;width:100%;" onclick="deleteOffer()" id="btn-delete">Delete Offer</button>
       </div>
     </div>
 
@@ -351,7 +351,7 @@
               <span style="color:#888">(${t.properties.length} properties)</span>
               <div style="margin-top:6px">
                 ${t.properties.map(p => `
-                  <button class="btn" style="background:#fff;border:1px solid #ccc;color:#333;padding:8px 12px;margin:4px 4px 4px 0;width:auto;font-size:0.85rem;"
+                  <button class="btn" style="background:#1e1e1e;border:1px solid #444;color:#ccc;padding:8px 12px;margin:4px 4px 4px 0;width:auto;font-size:0.85rem;"
                     onclick='startOffer(${JSON.stringify(p).replace(/'/g, "&#39;")})'>
                     ${p.address} — ${p.price}
                   </button>
