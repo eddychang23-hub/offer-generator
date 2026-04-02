@@ -375,25 +375,27 @@
 
     // ── Start new offer from a showing ────────────────────
     function startOffer(property) {
-      // Parse address: split first token as street number, rest as street
-      const addrParts = (property.address || '').split(' ');
-      const streetNum = addrParts[0] || '';
-      const streetName = addrParts.slice(1).join(' ') || '';
-
       currentOffer = {
         offer_id: `${property.tour_id}-${property.mls}`,
         status: 'ready',
         tour_id: property.tour_id,
         mls: property.mls,
-        // Pre-fill from showing data
-        street_num: streetNum,
-        street: streetName,
-        city: '', zipcode: '',
-        plan: '', block: '', lot: '', inclusions: '', exclusions: '',
-        seller1: '', seller2: '',
+        // Pre-fill from showing data (all extracted upfront)
+        street_num: property.street_num || '',
+        street: property.street || '',
+        city: property.city || '',
+        zipcode: property.zipcode || '',
+        plan: property.plan || '',
+        block: property.block || '',
+        lot: property.lot || '',
+        inclusions: property.inclusions || '',
+        exclusions: property.exclusions || '',
+        seller1: property.seller1 || '',
+        seller2: property.seller2 || '',
         listing_broker: property.listing_brokerage || '',
         listing_agent: property.listing_agent || '',
-        listing_agent_ph: '', listing_agent_email: '',
+        listing_agent_ph: property.listing_agent_ph || '',
+        listing_agent_email: property.listing_agent_email || '',
         // Defaults
         purchase_price: property.price ? property.price.replace(/[$,]/g, '') : '',
         closing_docs: "seller's",
@@ -409,9 +411,9 @@
       populateForm(currentOffer);
       showForm();
 
-      // Trigger extraction on desktop
-      saveOffer('extracting');
-      toast('Offer created — extraction will run on desktop');
+      // Save as ready — no extraction needed, all data from Showings tab
+      saveOffer('ready');
+      toast('Offer created — all property data loaded');
     }
 
     // ── Load existing offer into form ─────────────────────

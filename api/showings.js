@@ -10,7 +10,7 @@ module.exports = async function handler(req, res) {
 
     const result = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Showings!A:T',
+      range: 'Showings!A:AH',
     });
 
     const rows = result.data.values || [];
