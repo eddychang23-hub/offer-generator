@@ -67,11 +67,16 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ offers: [] });
       }
       const headers = rows[0];
-      const offers = rows.slice(1).map((row, idx) => {
-        const obj = { _rowIndex: idx + 2 }; // 1-indexed, +1 for header
-        headers.forEach((h, i) => { obj[h] = row[i] || ''; });
-        return obj;
-      });
+      const offers = rows.slice(1)
+        .map((row, idx) => {
+          const obj = { _rowIndex: idx + 2 }; // 1-indexed, +1 for header
+          headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+          return obj;
+        })
+        // Filter out ghost rows (all fields empty except possibly created_at/updated_at)
+        .filter(o => Object.entries(o).some(([k, v]) =>
+          k !== '_rowIndex' && k !== 'created_at' && k !== 'updated_at' && v
+        ));
       return res.status(200).json({ offers });
     } catch (err) {
       console.error('Error reading offers:', err);
@@ -125,13 +130,28 @@ module.exports = async function handler(req, res) {
       if (!_rowIndex) {
         return res.status(400).json({ error: 'Missing _rowIndex' });
       }
-      // Clear the row (keeps row number intact so other rows aren't shifted)
-      const emptyRow = OFFERS_HEADERS.map(() => '');
-      await sheets.spreadsheets.values.update({
+      // Look up the Offers tab's internal sheetId (different from spreadsheetId)
+      const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+      const offersSheet = meta.data.sheets.find(s => s.properties.title === 'Offers');
+      if (!offersSheet) {
+        return res.status(500).json({ error: 'Offers sheet not found' });
+      }
+      const sheetId = offersSheet.properties.sheetId;
+      // Actually delete the row (_rowIndex is 1-indexed; API is 0-indexed)
+      await sheets.spreadsheets.batchUpdate({
         spreadsheetId: SPREADSHEET_ID,
-        range: `Offers!A${_rowIndex}:BC${_rowIndex}`,
-        valueInputOption: 'RAW',
-        requestBody: { values: [emptyRow] },
+        requestBody: {
+          requests: [{
+            deleteDimension: {
+              range: {
+                sheetId,
+                dimension: 'ROWS',
+                startIndex: _rowIndex - 1,
+                endIndex: _rowIndex,
+              },
+            },
+          }],
+        },
       });
       return res.status(200).json({ success: true, action: 'deleted' });
     } catch (err) {

@@ -565,40 +565,8 @@
       $('btn-delete').disabled = false;
     }
 
-    // ── Auto-save every 30 seconds ──────────────────────
-    let autoSaveInterval = null;
-
-    function startAutoSave() {
-      if (autoSaveInterval) clearInterval(autoSaveInterval);
-      autoSaveInterval = setInterval(async () => {
-        if (currentOffer && !$('view-form').classList.contains('hidden')) {
-          const data = gatherFormData();
-          // Don't overwrite special statuses
-          if (data.status !== 'extracting' && data.status !== 'generate') {
-            data.status = 'saved';
-          }
-          try {
-            const res = await fetch('/api/offers', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(data),
-            });
-            const result = await res.json();
-            if (result.success && result.row) currentOffer._rowIndex = result.row;
-          } catch (err) {
-            // Silent fail on auto-save
-          }
-        }
-      }, 30000);
-    }
-
-    function stopAutoSave() {
-      if (autoSaveInterval) { clearInterval(autoSaveInterval); autoSaveInterval = null; }
-    }
-
     // ── Navigation ────────────────────────────────────────
     function showHome() {
-      stopAutoSave();
       $('view-home').classList.remove('hidden');
       $('view-form').classList.add('hidden');
       loadHome();
@@ -608,7 +576,6 @@
       $('view-home').classList.add('hidden');
       $('view-form').classList.remove('hidden');
       window.scrollTo(0, 0);
-      startAutoSave();
     }
 
     // ── Init ──────────────────────────────────────────────
