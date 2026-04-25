@@ -57,7 +57,7 @@ function DesktopApp() {
           ))}
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 22.5px 16px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 30px 16px' }}>
           {visible.map((b) => {
             const active = route.name === 'detail' && route.id === b.id;
             return (
