@@ -327,17 +327,27 @@ function Section({ title, action, children }) {
   );
 }
 
-// Document strip — used on cards and detail
-function DocStrip({ docs }) {
+// Document strip — used on cards and detail. `compact` drops the labels and
+// shrinks icons; useful in the desktop sidebar where horizontal space is tight.
+// Hover tooltips still expose the doc names.
+function DocStrip({ docs, compact = false }) {
   // docs: { crg: bool, bra: bool, ... }
   const order = ['crg', 'bra', 'fintrac', 'rof', 'ti', 'waiver'];
+  const iconSize = compact ? 14 : 18;
+  const gap = compact ? 7 : 10;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap }}>
       {order.map((k) => (
-        <div key={k} title={DOC_LABEL[k]} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-          <DocIcon kind={k} on={!!docs[k]} size={18}/>
-          <span style={{ fontSize: 9, fontWeight: 600, color: docs[k] ? T.accent : T.textMute, letterSpacing: 0.3 }}>{DOC_LABEL[k]}</span>
-        </div>
+        compact ? (
+          <span key={k} title={DOC_LABEL[k]} style={{ display: 'inline-flex' }}>
+            <DocIcon kind={k} on={!!docs[k]} size={iconSize}/>
+          </span>
+        ) : (
+          <div key={k} title={DOC_LABEL[k]} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <DocIcon kind={k} on={!!docs[k]} size={iconSize}/>
+            <span style={{ fontSize: 9, fontWeight: 600, color: docs[k] ? T.accent : T.textMute, letterSpacing: 0.3 }}>{DOC_LABEL[k]}</span>
+          </div>
+        )
       ))}
     </div>
   );

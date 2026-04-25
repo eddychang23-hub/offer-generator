@@ -25,7 +25,7 @@ function DesktopApp() {
       fontFamily: T.font, fontSize: 14, lineHeight: 1.45,
       WebkitFontSmoothing: 'antialiased',
       display: 'grid',
-      gridTemplateColumns: '64px 440px 1fr',
+      gridTemplateColumns: '64px 360px 1fr',
       overflow: 'hidden',
     }}>
       {/* Rail — global nav */}
@@ -63,7 +63,7 @@ function DesktopApp() {
             return (
               <button key={b.id} onClick={() => setRoute({ name: 'detail', id: b.id })} style={{
                 all: 'unset', cursor: 'pointer', display: 'block', width: '100%',
-                padding: '11px 12px', borderRadius: 10, marginBottom: 2,
+                padding: '9px 10px', borderRadius: 10, marginBottom: 2,
                 background: active ? 'rgba(55,217,168,0.08)' : 'transparent',
                 border: `1px solid ${active ? 'rgba(55,217,168,0.25)' : 'transparent'}`,
                 transition: 'background .12s',
@@ -71,18 +71,18 @@ function DesktopApp() {
                 onMouseEnter={(e) => !active && (e.currentTarget.style.background = T.surface)}
                 onMouseLeave={(e) => !active && (e.currentTarget.style.background = 'transparent')}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, minWidth: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flex: 1 }}>
                     {b.preferred} {b.last}
                   </span>
                   <StatusBadge status={b.status} size="sm"/>
                 </div>
-                <div style={{ fontSize: 12, color: T.textDim, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontSize: 11.5, color: T.textDim, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {b.activeAddress || b.activity}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                  <DocStrip docs={b.docs}/>
-                  <span style={{ fontSize: 10.5, color: T.textMute, fontFamily: T.mono }}>{b.agreementNumber}</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7, gap: 8, minWidth: 0 }}>
+                  <DocStrip docs={b.docs} compact/>
+                  <span style={{ fontSize: 10, color: T.textMute, fontFamily: T.mono, whiteSpace: 'nowrap' }}>{b.agreementNumber}</span>
                 </div>
               </button>
             );
