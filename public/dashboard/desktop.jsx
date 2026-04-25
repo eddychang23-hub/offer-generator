@@ -3,7 +3,9 @@
 // Input, Toggle, Check, RadioGroup, Section, fmtDate) from shared.jsx + buyer-detail.jsx.
 
 function DesktopApp() {
-  const [route, setRoute] = React.useState({ name: 'detail', id: 'eddy-chang' });
+  // Top-level view: 'home' (overview) | 'buyers' (list + detail)
+  const [view, setView] = React.useState('home');
+  const [route, setRoute] = React.useState({ name: 'detail', id: BUYERS[0]?.id || '' });
   const [filter, setFilter] = React.useState('All');
   const [q, setQ] = React.useState('');
 
@@ -18,6 +20,16 @@ function DesktopApp() {
     .filter(filters.find((f) => f.key === filter).test)
     .filter((b) => !q || `${b.preferred} ${b.last} ${b.email}`.toLowerCase().includes(q.toLowerCase()));
 
+  // When the user clicks a buyer from Home, jump into Buyers view + select them.
+  const goToBuyer = (id) => {
+    setView('buyers');
+    setRoute({ name: 'detail', id });
+  };
+
+  // Grid columns shift based on view: Home is just rail + main; Buyers is
+  // rail + sidebar + main (the existing 3-column layout).
+  const gridCols = view === 'home' ? '64px 1fr' : '64px 360px 1fr';
+
   return (
     <div style={{
       width: '100%', height: '100%',
@@ -25,14 +37,14 @@ function DesktopApp() {
       fontFamily: T.font, fontSize: 14, lineHeight: 1.45,
       WebkitFontSmoothing: 'antialiased',
       display: 'grid',
-      gridTemplateColumns: '64px 360px 1fr',
+      gridTemplateColumns: gridCols,
       overflow: 'hidden',
     }}>
       {/* Rail — global nav */}
-      <Rail/>
+      <Rail view={view} onSelect={setView}/>
 
-      {/* Sidebar — buyer list */}
-      <aside style={{
+      {/* Sidebar — buyer list (only visible in 'buyers' view) */}
+      {view === 'buyers' && <aside style={{
         background: '#0F1216',
         borderRight: `1px solid ${T.border}`,
         display: 'flex', flexDirection: 'column',
@@ -100,25 +112,37 @@ function DesktopApp() {
             Start New Paperwork
           </Btn>
         </div>
-      </aside>
+      </aside>}
 
       {/* Main pane */}
       <main style={{ overflowY: 'auto', minHeight: 0 }}>
-        {route.name === 'detail' && <DetailPane buyer={BUYERS.find((b) => b.id === route.id) || BUYERS[0]} onWizard={() => setRoute({ name: 'wizard' })}/>}
-        {route.name === 'wizard' && <WizardPane onClose={() => setRoute({ name: 'detail', id: 'eddy-chang' })}/>}
+        {view === 'home' && (
+          <Home
+            onSelectBuyer={goToBuyer}
+            onStartNew={() => { setView('buyers'); setRoute({ name: 'wizard' }); }}
+          />
+        )}
+        {view === 'buyers' && route.name === 'detail' && (
+          <DetailPane
+            buyer={BUYERS.find((b) => b.id === route.id) || BUYERS[0]}
+            onWizard={() => setRoute({ name: 'wizard' })}
+          />
+        )}
+        {view === 'buyers' && route.name === 'wizard' && (
+          <WizardPane onClose={() => setRoute({ name: 'detail', id: BUYERS[0]?.id || '' })}/>
+        )}
       </main>
     </div>
   );
 }
 
 // ─── Rail ─────────────────────────────────────────────────────
-function Rail() {
+// Global navigation. Only Home + Buyers are functional right now;
+// Documents/Calendar/Settings are hidden until they have real screens.
+function Rail({ view, onSelect }) {
   const items = [
-    { name: 'Buyers', active: true, icon: <path d="M9 9a3 3 0 100-6 3 3 0 000 6zM3 16c0-3 3-5 6-5s6 2 6 5"/> },
-    { name: 'Showings', icon: <path d="M3 8l6-5l6 5v8H3V8z M7 16v-5h4v5"/> },
-    { name: 'Calendar', icon: <path d="M3 5h12v10H3V5z M3 8h12 M6 3v3 M12 3v3"/> },
-    { name: 'Templates', icon: <path d="M4 3h7l3 3v9H4V3z M11 3v3h3"/> },
-    { name: 'Settings', icon: <path d="M9 6.5a2.5 2.5 0 100 5a2.5 2.5 0 000-5z M9 1v2 M9 15v2 M3 9H1 M17 9h-2 M4 4l1.5 1.5 M14 14l-1.5-1.5 M14 4l-1.5 1.5 M4 14l1.5-1.5"/> },
+    { key: 'home',   label: 'Home',   icon: <path d="M3 8l6-5l6 5v8H3V8z M7 16v-5h4v5"/> },
+    { key: 'buyers', label: 'Buyers', icon: <path d="M9 9a3 3 0 100-6 3 3 0 000 6zM3 16c0-3 3-5 6-5s6 2 6 5"/> },
   ];
   return (
     <nav style={{
@@ -132,18 +156,25 @@ function Rail() {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 15, fontWeight: 800, fontFamily: T.mono, letterSpacing: -0.5,
       }}>BF</div>
-      {items.map((it) => (
-        <button key={it.name} title={it.name} style={{
-          width: 40, height: 40, borderRadius: 9, border: 'none', cursor: 'pointer',
-          background: it.active ? 'rgba(55,217,168,0.1)' : 'transparent',
-          color: it.active ? T.accent : T.textDim,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            {it.icon}
-          </svg>
-        </button>
-      ))}
+      {items.map((it) => {
+        const active = view === it.key;
+        return (
+          <button key={it.key} title={it.label} onClick={() => onSelect && onSelect(it.key)} style={{
+            width: 40, height: 40, borderRadius: 9, border: 'none', cursor: 'pointer',
+            background: active ? 'rgba(55,217,168,0.1)' : 'transparent',
+            color: active ? T.accent : T.textDim,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all .12s',
+          }}
+            onMouseEnter={(e) => !active && (e.currentTarget.style.background = T.surface)}
+            onMouseLeave={(e) => !active && (e.currentTarget.style.background = 'transparent')}
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              {it.icon}
+            </svg>
+          </button>
+        );
+      })}
       <div style={{ flex: 1 }}/>
       <div style={{
         width: 32, height: 32, borderRadius: 16,
@@ -152,6 +183,159 @@ function Rail() {
         fontSize: 12, fontWeight: 700, color: '#fff',
       }}>RA</div>
     </nav>
+  );
+}
+
+// ─── Home / Overview ──────────────────────────────────────────
+// First screen the agent sees when opening the dashboard. Shows pipeline
+// stats, urgent items, upcoming dates, and recent activity. All data here
+// is currently mocked / derived from the in-memory BUYERS list — when the
+// API hookup is complete, swap the URGENT/UPCOMING/ACTIVITY arrays for
+// derived values from /api/buyers + /api/showings + /api/offers.
+function Home({ onSelectBuyer, onStartNew }) {
+  const today = new Date();
+  const monthName = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  const weekday = today.toLocaleDateString('en-US', { weekday: 'long' });
+
+  // Pipeline counts derived from BUYERS
+  const activeDeals = BUYERS.filter((b) => ['Offer Out', 'Accepted', 'Conditions Pending', 'Pending Possession'].includes(b.status)).length;
+  // Mock — derive from real data when wired up
+  const showingsThisWeek = 8;
+  const closingThisMonth = BUYERS.filter((b) => b.status === 'Pending Possession').length;
+
+  const urgent = [
+    { kind: 'expiry',    icon: '🔥', text: 'Eddy Chang — offer expires in 22 hours',     buyerId: 'eddy-chang',    sub: '5016 Kinney Li SW · Apr 26, 9:00 PM' },
+    { kind: 'condition', icon: '⚠️', text: 'Priya Sandhu — condition removal due Apr 28', buyerId: 'priya-sandhu',  sub: '208 Windermere Drive SW · Financing + Inspection' },
+    { kind: 'paperwork', icon: '📋', text: 'Marcus Okafor — generate FINTRAC pkg',         buyerId: 'marcus-okafor', sub: 'Required after offer acceptance' },
+    { kind: 'possession',icon: '🔑', text: 'Rachel Tremblay — possession in 35 days',      buyerId: 'rachel-tremblay', sub: '92 Terwillegar Vista NW · May 30' },
+  ];
+
+  const upcoming = [
+    { date: 'Apr 26', when: 'Tomorrow',  text: 'Eddy Chang — offer expiry',          buyerId: 'eddy-chang' },
+    { date: 'Apr 28', when: '3 days',    text: 'Priya Sandhu — condition removal',   buyerId: 'priya-sandhu' },
+    { date: 'May 15', when: '20 days',   text: 'Marcus Okafor — closing',            buyerId: 'marcus-okafor' },
+    { date: 'May 30', when: '35 days',   text: 'Rachel Tremblay — possession',       buyerId: 'rachel-tremblay' },
+    { date: 'Jun 15', when: '51 days',   text: 'Eddy Chang — closing (if accepted)', buyerId: 'eddy-chang' },
+  ];
+
+  const activity = [
+    { ago: '2h ago',  text: 'Offer sent to RE/MAX (Eddy + Vanessa, 5016 Kinney Li SW)',    buyerId: 'eddy-chang' },
+    { ago: '1d ago',  text: 'BRA signed — Marcus Okafor (MO-0326)',                        buyerId: 'marcus-okafor' },
+    { ago: '3d ago',  text: 'CRG generated — Jamie Fitzgerald',                            buyerId: 'james-fitz' },
+    { ago: '5d ago',  text: 'Possession complete — Alina Popescu, moved to Closed',       buyerId: 'alina-popescu' },
+    { ago: '1w ago',  text: 'FINTRAC package generated — Priya Sandhu (3 documents)',     buyerId: 'priya-sandhu' },
+  ];
+
+  return (
+    <div style={{ padding: '32px 40px 60px', maxWidth: 1100, margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: 'uppercase' }}>
+            {weekday}
+          </div>
+          <h1 style={{ margin: '4px 0 0', fontSize: 30, fontWeight: 700, letterSpacing: -0.6 }}>
+            {monthName}
+          </h1>
+        </div>
+        <Btn size="md" onClick={onStartNew} leading={
+          <svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 2v10 M2 7h10" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
+        }>Start New Paperwork</Btn>
+      </div>
+
+      {/* Hero stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 32 }}>
+        <HeroStat label="Active Deals" value={activeDeals} sub="Offer out · Accepted · Pending" />
+        <HeroStat label="Showings This Week" value={showingsThisWeek} sub="Across 4 buyers" />
+        <HeroStat label="Closing This Month" value={closingThisMonth} sub={closingThisMonth ? 'Possession scheduled' : 'No closings yet'} />
+      </div>
+
+      {/* Urgent */}
+      <SectionLabel>Urgent — needs attention</SectionLabel>
+      <Card pad={0} style={{ marginBottom: 28 }}>
+        {urgent.map((u, i) => (
+          <button key={u.kind} onClick={() => onSelectBuyer && onSelectBuyer(u.buyerId)} style={{
+            all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14,
+            padding: '14px 18px', width: '100%', boxSizing: 'border-box',
+            borderBottom: i === urgent.length - 1 ? 'none' : `1px solid ${T.border}`,
+            transition: 'background .12s',
+          }}
+            onMouseEnter={(e) => e.currentTarget.style.background = T.surface2}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+          >
+            <span style={{ fontSize: 18, flexShrink: 0 }}>{u.icon}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{u.text}</div>
+              <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>{u.sub}</div>
+            </div>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={T.textMute} strokeWidth="1.5" style={{ flexShrink: 0 }}>
+              <path d="M4 2l4 4l-4 4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        ))}
+      </Card>
+
+      {/* Two-column: upcoming + activity */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
+        <div>
+          <SectionLabel>Upcoming (next 30 days)</SectionLabel>
+          <Card pad={0}>
+            {upcoming.map((u, i) => (
+              <button key={i} onClick={() => onSelectBuyer && onSelectBuyer(u.buyerId)} style={{
+                all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14,
+                padding: '12px 18px', width: '100%', boxSizing: 'border-box',
+                borderBottom: i === upcoming.length - 1 ? 'none' : `1px solid ${T.border}`,
+                transition: 'background .12s',
+              }}
+                onMouseEnter={(e) => e.currentTarget.style.background = T.surface2}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <div style={{ width: 56, flexShrink: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, fontFamily: T.mono }}>{u.date}</div>
+                  <div style={{ fontSize: 10.5, color: T.textMute, marginTop: 1 }}>{u.when}</div>
+                </div>
+                <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: T.text }}>{u.text}</div>
+              </button>
+            ))}
+          </Card>
+        </div>
+        <div>
+          <SectionLabel>Recent activity</SectionLabel>
+          <Card pad={0}>
+            {activity.map((a, i) => (
+              <button key={i} onClick={() => onSelectBuyer && onSelectBuyer(a.buyerId)} style={{
+                all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 14,
+                padding: '12px 18px', width: '100%', boxSizing: 'border-box',
+                borderBottom: i === activity.length - 1 ? 'none' : `1px solid ${T.border}`,
+                transition: 'background .12s',
+              }}
+                onMouseEnter={(e) => e.currentTarget.style.background = T.surface2}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <span style={{ width: 56, flexShrink: 0, fontSize: 11, color: T.textMute, fontFamily: T.mono, marginTop: 2 }}>{a.ago}</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: T.text, lineHeight: 1.5 }}>{a.text}</span>
+              </button>
+            ))}
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HeroStat({ label, value, sub }) {
+  return (
+    <Card pad={20}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: 'uppercase' }}>{label}</div>
+      <div style={{ fontSize: 36, fontWeight: 700, marginTop: 6, letterSpacing: -1, lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, color: T.textDim, marginTop: 8 }}>{sub}</div>}
+    </Card>
+  );
+}
+
+function SectionLabel({ children }) {
+  return (
+    <h3 style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 700, color: T.textMute, letterSpacing: 0.5, textTransform: 'uppercase' }}>{children}</h3>
   );
 }
 
@@ -198,10 +382,9 @@ function DetailPane({ buyer: b, onWizard }) {
         </div>
       </div>
 
-      {/* Two-column body */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24, padding: '24px 32px 40px' }}>
-        {/* Left column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24, minWidth: 0 }}>
+      {/* Single-column body */}
+      <div style={{ padding: '24px 32px 40px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24, minWidth: 0, maxWidth: 1100, margin: '0 auto' }}>
           {/* Active deal banner */}
           {b.activeAddress && (
             <Card pad={18} style={{
@@ -224,6 +407,9 @@ function DetailPane({ buyer: b, onWizard }) {
               </div>
             </Card>
           )}
+
+          {/* Identity strip (replaces the old right column) */}
+          <IdentityStrip b={b} fullAddr={fullAddr}/>
 
           {/* Documents — table on desktop */}
           <div>
@@ -293,34 +479,42 @@ function DetailPane({ buyer: b, onWizard }) {
           </div>
         </div>
 
-        {/* Right column — identity */}
-        <aside style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Card pad={0}>
-            <div style={{ padding: '14px 16px', borderBottom: `1px solid ${T.border}` }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: 'uppercase' }}>Identity</div>
-            </div>
-            <KVRow label="Legal name" value={b.legal}/>
-            <KVRow label="DOB" value={fmtDate(b.dob)}/>
-            <KVRow label="Occupation" value={b.occupation}/>
-            <KVRow label="Phone" value={b.phone}/>
-            <KVRow label="Address" value={fullAddr} multi/>
-            <KVRow label="ID type" value={b.idDoc.type}/>
-            <KVRow label="ID number" value={b.idDoc.num} mono/>
-            <KVRow label="Jurisdiction" value={b.idDoc.juris}/>
-            <KVRow label="Expiry" value={fmtDate(b.idDoc.expiry)} last/>
-          </Card>
-
-          <Card pad={14}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 8 }}>Quick Actions</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <Btn variant="secondary" size="sm" full>Email Drive Folder</Btn>
-              <Btn variant="secondary" size="sm" full>Upload Title Document</Btn>
-              <Btn variant="secondary" size="sm" full>Archive Buyer</Btn>
-            </div>
-          </Card>
-        </aside>
+        </div>
       </div>
     </div>
+  );
+}
+
+// Compact identity strip — replaces the old right column. Shows the
+// reference fields the agent might want at a glance without dominating
+// the layout.
+function IdentityStrip({ b, fullAddr }) {
+  const items = [
+    { label: 'Legal name', value: b.legal },
+    { label: 'DOB',        value: fmtDate(b.dob) },
+    { label: 'Occupation', value: b.occupation },
+    { label: 'Address',    value: fullAddr },
+    { label: 'ID',         value: `${b.idDoc.type} · ${b.idDoc.num} · ${b.idDoc.juris}`, mono: true },
+    { label: 'ID expiry',  value: fmtDate(b.idDoc.expiry) },
+  ];
+  return (
+    <Card pad={0}>
+      <div style={{ padding: '12px 18px', borderBottom: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: 'uppercase' }}>Identity</span>
+        <Btn size="sm" variant="ghost">Edit</Btn>
+      </div>
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+        padding: '14px 18px', gap: '12px 24px',
+      }}>
+        {items.map((it) => (
+          <div key={it.label}>
+            <div style={{ fontSize: 11, color: T.textMute, letterSpacing: 0.3, textTransform: 'uppercase', fontWeight: 600 }}>{it.label}</div>
+            <div style={{ fontSize: 13, color: T.text, marginTop: 3, fontFamily: it.mono ? T.mono : T.font, fontWeight: 500 }}>{it.value}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
