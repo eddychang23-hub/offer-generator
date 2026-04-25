@@ -51,7 +51,7 @@ function DesktopApp() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 6, padding: '0 18px 12px', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 18px 12px' }}>
           {filters.map((f) => (
             <Chip key={f.key} active={filter === f.key} onClick={() => setFilter(f.key)}>{f.key}</Chip>
           ))}
@@ -77,12 +77,14 @@ function DesktopApp() {
                   </span>
                   <StatusBadge status={b.status} size="sm"/>
                 </div>
-                <div style={{ fontSize: 11.5, color: T.textDim, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {b.activeAddress || b.activity}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 7, gap: 8, minWidth: 0 }}>
-                  <DocStrip docs={b.docs} compact/>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 3, gap: 8, minWidth: 0 }}>
+                  <span style={{ fontSize: 11.5, color: T.textDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flex: 1 }}>
+                    {b.activeAddress || b.activity}
+                  </span>
                   <span style={{ fontSize: 10, color: T.textMute, fontFamily: T.mono, whiteSpace: 'nowrap' }}>{b.agreementNumber}</span>
+                </div>
+                <div style={{ marginTop: 6 }}>
+                  <DocStrip docs={b.docs} compact/>
                 </div>
               </button>
             );
