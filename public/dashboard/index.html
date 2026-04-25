@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#0B0D10"/>
+<title>Buyer Files Dashboard</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #0B0D10; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  /* Mobile: full bleed. Desktop: centered phone-width column with subtle border. */
+  #app-root {
+    width: 100%;
+    min-height: 100vh;
+    background: #0B0D10;
+    color: #E8EAEE;
+    display: flex;
+    justify-content: center;
+  }
+  #app-shell {
+    width: 100%;
+    max-width: 480px;
+    min-height: 100vh;
+    position: relative;
+    background: #0B0D10;
+  }
+  @media (min-width: 600px) {
+    #app-shell {
+      border-left: 1px solid rgba(255,255,255,0.06);
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+  }
+  /* Loading state — shown until JSX boots */
+  #boot-loader {
+    display: flex; align-items: center; justify-content: center;
+    height: 100vh; color: #6B7280; font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div id="app-root">
+  <div id="app-shell">
+    <div id="boot-loader">Loading…</div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+
+<!-- Screens — load order matters: shared → data → screen components -->
+<script type="text/babel" src="/dashboard/shared.jsx"></script>
+<script type="text/babel" src="/dashboard/data.jsx"></script>
+<script type="text/babel" src="/dashboard/dashboard.jsx"></script>
+<script type="text/babel" src="/dashboard/buyer-detail.jsx"></script>
+<script type="text/babel" src="/dashboard/wizard.jsx"></script>
+<script type="text/babel" src="/dashboard/post-actions.jsx"></script>
+
+<script type="text/babel">
+// ─────────────────────────────────────────────────────────────
+// Hash-based router → preserves nav state across refresh + supports
+// browser back/forward. Routes:
+//   #/                       → dashboard
+//   #/buyer/:id              → buyer detail
+//   #/buyer/:id/deal         → post-acceptance
+//   #/new                    → new-paperwork wizard
+//   #/idreview               → ID parse review
+//   #/done                   → confirmation
+// ─────────────────────────────────────────────────────────────
+
+function parseHash() {
+  const h = (window.location.hash || '#/').replace(/^#\/?/, '');
+  const parts = h.split('/').filter(Boolean);
+  if (parts.length === 0) return { name: 'dashboard' };
+  if (parts[0] === 'buyer' && parts[1]) {
+    if (parts[2] === 'deal') return { name: 'postaccept', id: parts[1] };
+    return { name: 'buyer', id: parts[1] };
+  }
+  if (parts[0] === 'new')      return { name: 'wizard' };
+  if (parts[0] === 'idreview') return { name: 'idreview' };
+  if (parts[0] === 'done')     return { name: 'confirm' };
+  return { name: 'dashboard' };
+}
+
+function setHash(name, params = {}) {
+  const map = {
+    dashboard:  () => '/',
+    buyer:      () => `/buyer/${params.id}`,
+    postaccept: () => `/buyer/${params.id}/deal`,
+    wizard:     () => '/new',
+    idreview:   () => '/idreview',
+    confirm:    () => '/done',
+  };
+  window.location.hash = map[name] ? map[name]() : '/';
+}
+
+// ─────────────────────────────────────────────────────────────
+// API loader — fetches /api/buyers and exposes as window.BUYERS,
+// falling back to the design's mock data if the endpoint is
+// unreachable (local-dev / first-deploy state).
+// ─────────────────────────────────────────────────────────────
+
+async function loadBuyersFromAPI() {
+  try {
+    const res = await fetch('/api/buyers');
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (!Array.isArray(json.buyers)) return null;
+    // Map API row shape (flat columns) → screen shape (nested addr/idDoc/docs)
+    return json.buyers.map(b => ({
+      id: b.buyer_id || b.preferred_name?.toLowerCase().replace(/\s+/g, '-'),
+      preferred: b.preferred_name || '',
+      last: b.last_name || '',
+      legal: b.legal_name || '',
+      email: b.email || '',
+      dob: b.dob || '',
+      occupation: b.occupation || '',
+      addr: {
+        num: b.street_num || '',
+        street: b.street || '',
+        city: b.city || '',
+        state: b.state || '',
+        zip: b.zipcode || '',
+      },
+      idDoc: {
+        type: b.id_document_type || "Driver's Licence",
+        num: b.id_number || '',
+        juris: b.id_issuing_jurisdiction || '',
+        expiry: b.id_expiry_date || '',
+      },
+      agreementNumber: b.agreement_number || '',
+      // Status defaults — derived later from offers/deals
+      status: b.bra_signed_date ? 'BRA Signed' : 'Showings Only',
+      activeAddress: null,
+      bra: b.bra_signed_date || null,
+      crg: b.crg_signed_date || null,
+      docs: {
+        crg: !!b.crg_signed_date,
+        bra: !!b.bra_signed_date,
+        fintrac: false, rof: false, ti: false, waiver: false,
+      },
+      activity: b.updated_at ? `Updated ${b.updated_at}` : '',
+    }));
+  } catch (err) {
+    console.warn('loadBuyersFromAPI failed:', err);
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Root component — replaces the design canvas Prototype wrapper
+// ─────────────────────────────────────────────────────────────
+
+function Root() {
+  const [route, setRoute] = React.useState(parseHash());
+
+  // Listen for back/forward
+  React.useEffect(() => {
+    const onChange = () => setRoute(parseHash());
+    window.addEventListener('hashchange', onChange);
+    return () => window.removeEventListener('hashchange', onChange);
+  }, []);
+
+  const go = (name, params) => setHash(name, params);
+
+  return (
+    <>
+      {route.name === 'dashboard' && (
+        <Dashboard
+          onOpenBuyer={(id) => go('buyer', { id })}
+          onStartNew={() => go('wizard')}
+        />
+      )}
+      {route.name === 'buyer' && (
+        <BuyerDetail
+          buyerId={route.id}
+          onBack={() => go('dashboard')}
+          onOpenDeal={() => go('postaccept', { id: route.id })}
+          onNewOffer={() => go('wizard')}
+          onGenerate={() => go('idreview')}
+        />
+      )}
+      {route.name === 'wizard' && (
+        <NewPaperwork
+          onCancel={() => go('dashboard')}
+          onComplete={() => go('confirm')}
+        />
+      )}
+      {route.name === 'idreview' && (
+        <IDReview onBack={() => window.history.back()} onSave={() => window.history.back()}/>
+      )}
+      {route.name === 'postaccept' && (
+        <PostAcceptance onBack={() => go('buyer', { id: route.id })}/>
+      )}
+      {route.name === 'confirm' && (
+        <Confirmation onDone={() => go('dashboard')}/>
+      )}
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Boot — load buyers from API, then mount React. We wait so the
+// first paint already shows real data instead of flashing mocks.
+// ─────────────────────────────────────────────────────────────
+
+async function boot() {
+  const apiBuyers = await loadBuyersFromAPI();
+  if (apiBuyers && apiBuyers.length > 0) {
+    window.BUYERS = apiBuyers;
+  }
+  // else: keep window.BUYERS from data.jsx (mock data — handy until the
+  // Buyers tab has rows). When you add a real buyer, the API replaces it.
+
+  const shell = document.getElementById('app-shell');
+  shell.innerHTML = ''; // clear loader
+  ReactDOM.createRoot(shell).render(<Root/>);
+}
+
+boot();
+</script>
+</body>
+</html>
