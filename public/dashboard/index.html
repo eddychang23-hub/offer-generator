@@ -239,17 +239,44 @@ function Root() {
 // ─────────────────────────────────────────────────────────────
 
 async function boot() {
-  const apiBuyers = await loadBuyersFromAPI();
-  if (apiBuyers && apiBuyers.length > 0) {
-    window.BUYERS = apiBuyers;
-  }
-  // else: keep window.BUYERS from data.jsx (mock data — handy until the
-  // Buyers tab has rows). When you add a real buyer, the API replaces it.
+  try {
+    const apiBuyers = await loadBuyersFromAPI();
+    if (apiBuyers && apiBuyers.length > 0) {
+      window.BUYERS = apiBuyers;
+    }
+    // else: keep window.BUYERS from data.jsx (mock data — handy until the
+    // Buyers tab has rows). When you add a real buyer, the API replaces it.
 
-  const shell = document.getElementById('app-shell');
-  shell.innerHTML = ''; // clear loader
-  ReactDOM.createRoot(shell).render(<Root/>);
+    const shell = document.getElementById('app-shell');
+    shell.innerHTML = ''; // clear loader
+    ReactDOM.createRoot(shell).render(<Root/>);
+  } catch (err) {
+    // Make any boot/render error visible instead of silently showing
+    // a blank screen — easier to diagnose from the browser.
+    console.error('Dashboard boot failed:', err);
+    const shell = document.getElementById('app-shell');
+    if (shell) {
+      shell.innerHTML = '';
+      const errBox = document.createElement('pre');
+      errBox.style.cssText = 'color:#E66B6B;background:#14171C;padding:20px;margin:20px;border-radius:10px;white-space:pre-wrap;font-family:monospace;font-size:12px;line-height:1.5;';
+      errBox.textContent = 'Dashboard failed to load:\n\n' + (err && err.stack || String(err));
+      shell.appendChild(errBox);
+    }
+  }
 }
+
+// Catch globally — any sync errors during script load (Babel compile etc)
+window.addEventListener('error', (e) => {
+  console.error('Global error:', e.error || e.message);
+  const shell = document.getElementById('app-shell');
+  if (shell && shell.querySelector('#boot-loader')) {
+    shell.innerHTML = '';
+    const errBox = document.createElement('pre');
+    errBox.style.cssText = 'color:#E66B6B;background:#14171C;padding:20px;margin:20px;border-radius:10px;white-space:pre-wrap;font-family:monospace;font-size:12px;line-height:1.5;';
+    errBox.textContent = 'Script error:\n\n' + (e.error?.stack || e.message || 'Unknown error');
+    shell.appendChild(errBox);
+  }
+});
 
 boot();
 </script>
