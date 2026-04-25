@@ -25,7 +25,7 @@ function DesktopApp() {
       fontFamily: T.font, fontSize: 14, lineHeight: 1.45,
       WebkitFontSmoothing: 'antialiased',
       display: 'grid',
-      gridTemplateColumns: '64px 360px 1fr',
+      gridTemplateColumns: '64px 440px 1fr',
       overflow: 'hidden',
     }}>
       {/* Rail — global nav */}
