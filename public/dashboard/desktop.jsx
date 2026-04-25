@@ -37,6 +37,8 @@ function DesktopApp() {
         borderRight: `1px solid ${T.border}`,
         display: 'flex', flexDirection: 'column',
         minHeight: 0,
+        minWidth: 0,
+        overflowX: 'hidden',
       }}>
         <div style={{ padding: '20px 18px 12px' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -57,7 +59,7 @@ function DesktopApp() {
           ))}
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 55px 16px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 10px 16px', minWidth: 0 }}>
           {visible.map((b) => {
             const active = route.name === 'detail' && route.id === b.id;
             return (
