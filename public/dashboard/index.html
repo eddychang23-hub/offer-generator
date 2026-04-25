@@ -25,10 +25,23 @@
     position: relative;
     background: #0B0D10;
   }
-  @media (min-width: 600px) {
+  @media (min-width: 600px) and (max-width: 1023px) {
+    /* Tablet portrait — keep mobile UI but show subtle column borders */
     #app-shell {
       border-left: 1px solid rgba(255,255,255,0.06);
       border-right: 1px solid rgba(255,255,255,0.06);
+    }
+  }
+  @media (min-width: 1024px) {
+    /* Desktop / iPad landscape — DesktopApp uses height:100% internally,
+       so the shell needs an explicit 100vh + overflow:hidden so the rail,
+       sidebar, and detail pane each manage their own scrolling. */
+    #app-shell {
+      max-width: none;
+      height: 100vh;
+      min-height: 100vh;
+      overflow: hidden;
+      border: none;
     }
   }
   /* Loading state — shown until JSX boots */
@@ -56,6 +69,7 @@
 <script type="text/babel" src="/dashboard/buyer-detail.jsx"></script>
 <script type="text/babel" src="/dashboard/wizard.jsx"></script>
 <script type="text/babel" src="/dashboard/post-actions.jsx"></script>
+<script type="text/babel" src="/dashboard/desktop.jsx"></script>
 
 <script type="text/babel">
 // ─────────────────────────────────────────────────────────────
@@ -152,10 +166,25 @@ async function loadBuyersFromAPI() {
 // Root component — replaces the design canvas Prototype wrapper
 // ─────────────────────────────────────────────────────────────
 
+// Viewport hook — desktop layout >= 1024px (covers most laptops + iPad landscape).
+// Below that we render the phone UI (mobile + iPad portrait).
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = React.useState(
+    typeof window !== 'undefined' && window.innerWidth >= 1024
+  );
+  React.useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return isDesktop;
+}
+
 function Root() {
+  const isDesktop = useIsDesktop();
   const [route, setRoute] = React.useState(parseHash());
 
-  // Listen for back/forward
+  // Listen for back/forward (mobile only — desktop manages routing internally)
   React.useEffect(() => {
     const onChange = () => setRoute(parseHash());
     window.addEventListener('hashchange', onChange);
@@ -163,6 +192,10 @@ function Root() {
   }, []);
 
   const go = (name, params) => setHash(name, params);
+
+  if (isDesktop) {
+    return <DesktopApp/>;
+  }
 
   return (
     <>
