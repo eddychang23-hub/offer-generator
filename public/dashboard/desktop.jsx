@@ -44,7 +44,8 @@ function DesktopApp() {
       <Rail view={view} onSelect={setView}/>
 
       {/* Sidebar — buyer list (only visible in 'buyers' view) */}
-      {view === 'buyers' && <aside style={{
+      {view === 'buyers' && (
+      <aside style={{
         background: '#0F1216',
         borderRight: `1px solid ${T.border}`,
         display: 'flex', flexDirection: 'column',
@@ -112,7 +113,8 @@ function DesktopApp() {
             Start New Paperwork
           </Btn>
         </div>
-      </aside>}
+      </aside>
+      )}
 
       {/* Main pane */}
       <main style={{ overflowY: 'auto', minHeight: 0 }}>
