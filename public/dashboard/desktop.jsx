@@ -374,8 +374,55 @@ function IdentityStrip({ b, fullAddr }) {
 }
 
 // ─── Detail pane ──────────────────────────────────────────────
+
+// Maps the dashboard's compact doc kind to the form_key used by
+// field_schema.json + forms_engine.fill_form().
+const FORM_KEY_BY_KIND = {
+  crg:     'consumer_relationships_guide',
+  bra:     'buyer_representation_agreement',
+  fintrac: 'fintrac_individual_id',
+  rof:     'fintrac_receipt_of_funds',
+  ti:      'transaction_information',
+  waiver:  'notice_waiver',
+};
+
 function DetailPane({ buyer: b, onWizard }) {
   const fullAddr = `${b.addr.num} ${b.addr.street}, ${b.addr.city}, ${b.addr.state} ${b.addr.zip}`;
+  // Track which doc kinds are currently being requested so we can show
+  // a "Requesting…" state on the corresponding button.
+  const [pending, setPending] = React.useState({});
+
+  const requestGenerate = async (kind) => {
+    const form_key = FORM_KEY_BY_KIND[kind];
+    if (!form_key) {
+      alert(`No form_key mapped for "${kind}"`);
+      return;
+    }
+    setPending((p) => ({ ...p, [kind]: true }));
+    try {
+      const res = await fetch('/api/paperwork', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ form_key, buyer_id: b.id }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert(
+          `Queued ${form_key}\n\n` +
+          `Paperwork ID: ${json.paperwork_id}\n\n` +
+          `The desktop processor will pick it up within ~30 seconds and place ` +
+          `the PDF in the buyer's Drive folder.`
+        );
+      } else {
+        alert(`Error: ${json.error || 'unknown'}`);
+      }
+    } catch (err) {
+      alert(`Network error: ${err.message}`);
+    } finally {
+      setPending((p) => ({ ...p, [kind]: false }));
+    }
+  };
+
   const docList = [
     { kind: 'crg', name: 'Consumer Relationships Guide', date: b.crg, on: b.docs.crg },
     { kind: 'bra', name: 'Buyer Representation Agreement', date: b.bra, on: b.docs.bra, sub: 'Expires Oct 19, 2026' },
@@ -477,7 +524,9 @@ function DetailPane({ buyer: b, onWizard }) {
                       <Btn size="sm" variant="ghost">Resend</Btn>
                     </>
                   ) : (
-                    <Btn size="sm">Generate</Btn>
+                    <Btn size="sm" disabled={pending[d.kind]} onClick={() => requestGenerate(d.kind)}>
+                      {pending[d.kind] ? 'Requesting…' : 'Generate'}
+                    </Btn>
                   )}
                 </div>
               ))}
