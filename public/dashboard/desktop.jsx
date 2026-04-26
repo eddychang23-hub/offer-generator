@@ -111,7 +111,10 @@ function DesktopApp() {
       {/* Main pane */}
       <main style={{ overflowY: 'auto', minHeight: 0 }}>
         {view === 'home' ? (
-          <Home/>
+          <Home
+            onSelectBuyer={(id) => { setView('buyers'); setRoute({ name: 'detail', id }); }}
+            onStartNew={() => { setView('buyers'); setRoute({ name: 'wizard' }); }}
+          />
         ) : route.name === 'wizard' ? (
           <WizardPane onClose={() => setRoute({ name: 'detail', id: 'eddy-chang' })}/>
         ) : (
@@ -171,28 +174,131 @@ function Rail({ view, onSelect }) {
 }
 
 // ─── Home / Overview ──────────────────────────────────────────
-// Minimal placeholder for now — first paint of the Home view, no data
-// dependencies so it can't crash. Real content (stats, urgent items,
-// activity feed) lands in a follow-up commit once we know rendering
-// works.
-function Home() {
+// First screen the agent sees. Pipeline stats + urgent items +
+// upcoming dates + recent activity. Stats derive from BUYERS; the
+// urgent/upcoming/activity arrays are mocked until the watcher writes
+// derived signals to a Sheets tab we can read.
+function Home({ onSelectBuyer, onStartNew }) {
   const today = new Date();
   const monthName = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
   const weekday = today.toLocaleDateString('en-US', { weekday: 'long' });
+
+  const safeBuyers = Array.isArray(BUYERS) ? BUYERS : [];
+  const activeDeals = safeBuyers.filter((b) => ['Offer Out', 'Accepted', 'Conditions Pending', 'Pending Possession'].includes(b.status)).length;
+  const closingThisMonth = safeBuyers.filter((b) => b.status === 'Pending Possession').length;
+  const showingsThisWeek = 8; // mock — derive from Showings tab when wired up
+
+  const urgent = [
+    { kind: 'expiry',    icon: '🔥', text: 'Eddy Chang — offer expires in 22 hours',         buyerId: 'eddy-chang',    sub: '5016 Kinney Li SW · Apr 26, 9:00 PM' },
+    { kind: 'condition', icon: '⚠️', text: 'Priya Sandhu — condition removal due Apr 28',    buyerId: 'priya-sandhu',  sub: '208 Windermere Drive SW · Financing + Inspection' },
+    { kind: 'paperwork', icon: '📋', text: 'Marcus Okafor — generate FINTRAC pkg',           buyerId: 'marcus-okafor', sub: 'Required after offer acceptance' },
+    { kind: 'possession',icon: '🔑', text: 'Rachel Tremblay — possession in 35 days',        buyerId: 'rachel-tremblay', sub: '92 Terwillegar Vista NW · May 30' },
+  ];
+
+  const upcoming = [
+    { date: 'Apr 26', when: 'Tomorrow', text: 'Eddy Chang — offer expiry',          buyerId: 'eddy-chang' },
+    { date: 'Apr 28', when: '3 days',   text: 'Priya Sandhu — condition removal',   buyerId: 'priya-sandhu' },
+    { date: 'May 15', when: '20 days',  text: 'Marcus Okafor — closing',            buyerId: 'marcus-okafor' },
+    { date: 'May 30', when: '35 days',  text: 'Rachel Tremblay — possession',       buyerId: 'rachel-tremblay' },
+    { date: 'Jun 15', when: '51 days',  text: 'Eddy Chang — closing (if accepted)', buyerId: 'eddy-chang' },
+  ];
+
+  const activity = [
+    { ago: '2h ago', text: 'Offer sent to RE/MAX (Eddy + Vanessa, 5016 Kinney Li SW)', buyerId: 'eddy-chang' },
+    { ago: '1d ago', text: 'BRA signed — Marcus Okafor (MO-0326)',                     buyerId: 'marcus-okafor' },
+    { ago: '3d ago', text: 'CRG generated — Jamie Fitzgerald',                         buyerId: 'james-fitz' },
+    { ago: '5d ago', text: 'Possession complete — Alina Popescu, moved to Closed',     buyerId: 'alina-popescu' },
+    { ago: '1w ago', text: 'FINTRAC package generated — Priya Sandhu (3 documents)',   buyerId: 'priya-sandhu' },
+  ];
+
   return (
     <div style={{ padding: '32px 40px 60px', maxWidth: 1100, margin: '0 auto' }}>
-      <div style={{ fontSize: 12, color: T.textMute, letterSpacing: 0.6, textTransform: 'uppercase', fontWeight: 700 }}>
-        {weekday}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: 'uppercase' }}>{weekday}</div>
+          <h1 style={{ margin: '4px 0 0', fontSize: 30, fontWeight: 700, letterSpacing: -0.6 }}>{monthName}</h1>
+        </div>
+        <Btn size="md" onClick={onStartNew}>+ Start New Paperwork</Btn>
       </div>
-      <h1 style={{ margin: '4px 0 0', fontSize: 30, fontWeight: 700, letterSpacing: -0.6 }}>
-        {monthName}
-      </h1>
-      <p style={{ marginTop: 24, fontSize: 14, color: T.textDim, lineHeight: 1.6 }}>
-        Home view scaffolding — pipeline stats, urgent items, upcoming dates,
-        and recent activity will land here next. For now, click <strong style={{ color: T.text }}>Buyers</strong> in
-        the rail to see the buyer list.
-      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 32 }}>
+        <HeroStat label="Active Deals"        value={activeDeals}        sub="Offer out · Accepted · Pending"/>
+        <HeroStat label="Showings This Week"  value={showingsThisWeek}   sub="Across 4 buyers"/>
+        <HeroStat label="Closing This Month"  value={closingThisMonth}   sub={closingThisMonth ? 'Possession scheduled' : 'No closings yet'}/>
+      </div>
+
+      <SectionLabel>Urgent — needs attention</SectionLabel>
+      <Card pad={0} style={{ marginBottom: 28 }}>
+        {urgent.map((u, i) => (
+          <button key={u.kind} onClick={() => onSelectBuyer && onSelectBuyer(u.buyerId)} style={{
+            all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14,
+            padding: '14px 18px', width: '100%', boxSizing: 'border-box',
+            borderBottom: i === urgent.length - 1 ? 'none' : `1px solid ${T.border}`,
+          }}>
+            <span style={{ fontSize: 18, flexShrink: 0 }}>{u.icon}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{u.text}</div>
+              <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>{u.sub}</div>
+            </div>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={T.textMute} strokeWidth="1.5" style={{ flexShrink: 0 }}>
+              <path d="M4 2l4 4l-4 4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        ))}
+      </Card>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
+        <div>
+          <SectionLabel>Upcoming (next 30 days)</SectionLabel>
+          <Card pad={0}>
+            {upcoming.map((u, i) => (
+              <button key={i} onClick={() => onSelectBuyer && onSelectBuyer(u.buyerId)} style={{
+                all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14,
+                padding: '12px 18px', width: '100%', boxSizing: 'border-box',
+                borderBottom: i === upcoming.length - 1 ? 'none' : `1px solid ${T.border}`,
+              }}>
+                <div style={{ width: 56, flexShrink: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, fontFamily: T.mono }}>{u.date}</div>
+                  <div style={{ fontSize: 10.5, color: T.textMute, marginTop: 1 }}>{u.when}</div>
+                </div>
+                <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: T.text }}>{u.text}</div>
+              </button>
+            ))}
+          </Card>
+        </div>
+        <div>
+          <SectionLabel>Recent activity</SectionLabel>
+          <Card pad={0}>
+            {activity.map((a, i) => (
+              <button key={i} onClick={() => onSelectBuyer && onSelectBuyer(a.buyerId)} style={{
+                all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 14,
+                padding: '12px 18px', width: '100%', boxSizing: 'border-box',
+                borderBottom: i === activity.length - 1 ? 'none' : `1px solid ${T.border}`,
+              }}>
+                <span style={{ width: 56, flexShrink: 0, fontSize: 11, color: T.textMute, fontFamily: T.mono, marginTop: 2 }}>{a.ago}</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: T.text, lineHeight: 1.5 }}>{a.text}</span>
+              </button>
+            ))}
+          </Card>
+        </div>
+      </div>
     </div>
+  );
+}
+
+function HeroStat({ label, value, sub }) {
+  return (
+    <Card pad={20}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: 'uppercase' }}>{label}</div>
+      <div style={{ fontSize: 36, fontWeight: 700, marginTop: 6, letterSpacing: -1, lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, color: T.textDim, marginTop: 8 }}>{sub}</div>}
+    </Card>
+  );
+}
+
+function SectionLabel({ children }) {
+  return (
+    <h3 style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 700, color: T.textMute, letterSpacing: 0.5, textTransform: 'uppercase' }}>{children}</h3>
   );
 }
 
