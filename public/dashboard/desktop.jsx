@@ -197,20 +197,34 @@ function NewBuyer({ onCancel, onSaved }) {
   const [error, setError] = React.useState(null);
   const set = (k, v) => setS((o) => ({ ...o, [k]: v }));
 
-  // Auto-generated agreement number — buyer initials + MMYY (e.g. EC-0426).
-  // Both first and last initial fall back to legal_name's words when the
-  // dedicated fields are blank.
+  // Auto-generated agreement number — buyer initials + MMYY (e.g. EC-0426
+  // for "Eddy Chang", MS-0426 for "Michael Smith"). Splits legal_name on
+  // whitespace; uses first letter of the first word + first letter of the
+  // last word. preferred_name and last_name take precedence when filled.
   const agreementNumber = React.useMemo(() => {
-    const legalParts = (s.legal_name || "").trim().split(/\s+/).filter(Boolean);
-    const firstSource = (s.preferred_name || legalParts[0] || "").trim();
-    const lastSource  = (s.last_name || legalParts[legalParts.length - 1] || "").trim();
-    const fi = firstSource[0] || "";
-    const li = lastSource[0]  || "";
-    if (!fi && !li) return "";
+    const legal = (s.legal_name || "").trim();
+    const parts = legal.split(/\s+/).filter(Boolean);
+
+    // First initial: preferred_name → legal name's first word
+    const firstSrc = (s.preferred_name || "").trim() || (parts[0] || "");
+    const fi = firstSrc[0] || "";
+
+    // Last initial: last_name → legal name's last word (only if 2+ words,
+    // so single-word names don't get the letter doubled)
+    let li = "";
+    const lastTyped = (s.last_name || "").trim();
+    if (lastTyped) {
+      li = lastTyped[0] || "";
+    } else if (parts.length >= 2) {
+      li = parts[parts.length - 1][0] || "";
+    }
+
+    const initials = (fi + li).toUpperCase();
+    if (!initials) return "";
     const now = new Date();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const yy = String(now.getFullYear() % 100).padStart(2, "0");
-    return `${(fi + li).toUpperCase()}-${mm}${yy}`;
+    return `${initials}-${mm}${yy}`;
   }, [s.preferred_name, s.legal_name, s.last_name]);
 
   const canSubmit = s.legal_name.trim() && s.email.trim() && !submitting;
