@@ -122,7 +122,10 @@ function DesktopApp() {
             onSaved={() => { window.location.hash = ''; window.location.reload(); }}
           />
         ) : route.name === 'wizard' ? (
-          <WizardPane onClose={() => setRoute({ name: 'detail', id: 'eddy-chang' })}/>
+          <WizardPane
+            onClose={() => setRoute({ name: 'detail', id: BUYERS[0]?.id || '' })}
+            onNewBuyer={() => setRoute({ name: 'newbuyer' })}
+          />
         ) : (
           <DetailPane buyer={BUYERS.find((b) => b.id === route.id) || BUYERS[0]} onWizard={() => setRoute({ name: 'wizard' })}/>
         )}
@@ -787,7 +790,7 @@ function KVRow({ label, value, mono, multi, last }) {
 
 // ─── Wizard pane (desktop) ────────────────────────────────────
 // Modal-style wide wizard with step rail on left, form on right.
-function WizardPane({ onClose }) {
+function WizardPane({ onClose, onNewBuyer }) {
   const [step, setStep] = React.useState(1);
   const labels = ['Buyer', 'Pre-offer', 'Property', 'Offer terms', 'Review'];
   const total = 5;
@@ -833,7 +836,7 @@ function WizardPane({ onClose }) {
 
         {/* Form area */}
         <div style={{ padding: '24px 32px 100px', maxWidth: 720 }}>
-          {step === 1 && <DesktopStepBuyer/>}
+          {step === 1 && <DesktopStepBuyer onNewBuyer={onNewBuyer}/>}
           {step === 2 && <DesktopStepPreOffer/>}
           {step === 3 && <DesktopStepProperty/>}
           {step === 4 && <DesktopStepTerms/>}
@@ -852,7 +855,7 @@ function WizardPane({ onClose }) {
   );
 }
 
-function DesktopStepBuyer() {
+function DesktopStepBuyer({ onNewBuyer }) {
   const [sel, setSel] = React.useState('eddy-chang');
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -872,7 +875,7 @@ function DesktopStepBuyer() {
           </Card>
         ))}
       </div>
-      <Btn variant="secondary" size="md" leading={<svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 2v10 M2 7h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>}>New Buyer</Btn>
+      <Btn variant="secondary" size="md" onClick={onNewBuyer} leading={<svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 2v10 M2 7h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>}>New Buyer</Btn>
     </div>
   );
 }
