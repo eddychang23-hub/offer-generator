@@ -184,14 +184,36 @@ function Home({ onSelectBuyer, onStartNew }) {
   const weekday = today.toLocaleDateString('en-US', { weekday: 'long' });
 
   const safeBuyers = Array.isArray(BUYERS) ? BUYERS : [];
+  const safeTours = Array.isArray(TOURS) ? TOURS : [];
   const activeDeals = safeBuyers.filter((b) => ['Offer Out', 'Accepted', 'Conditions Pending', 'Pending Possession'].includes(b.status)).length;
   const closingThisMonth = safeBuyers.filter((b) => b.status === 'Pending Possession').length;
-  const showingsScheduled = 5; // mock — derive from Showings tab (count rows with showing_date >= today)
+
+  // Showings scheduled = total upcoming property showings across all booked tours.
+  const upcomingTours = safeTours.filter((t) => t.upcoming);
+  const showingsScheduled = upcomingTours.reduce((sum, t) => sum + (t.properties || []).length, 0);
+
+  // Map buyer names → ids so tour rows can navigate to the right buyer
+  const buyerIdByName = {};
+  safeBuyers.forEach((b) => { buyerIdByName[`${b.preferred} ${b.last}`] = b.id; });
 
   // Drive — pull from defaults.json on the watcher side; here we hardcode the
   // Deals parent folder. Year auto-detection happens server-side eventually.
   const driveDealsFolderId = '1JcKlfFgkHhI0TGrMkxlxiSyFbpvEI_SW';
   const driveDealsUrl = `https://drive.google.com/drive/folders/${driveDealsFolderId}`;
+
+  // Helpers to format a date relative to today
+  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  function fmtShortDate(iso) {
+    return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  function relativeWhen(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    const diff = Math.round((d - startOfDay) / (24 * 60 * 60 * 1000));
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Tomorrow';
+    if (diff < 0)   return `${-diff} days ago`;
+    return `${diff} days`;
+  }
 
   const urgent = [
     { kind: 'expiry',    icon: '🔥', text: 'Eddy Chang — offer expires in 22 hours',         buyerId: 'eddy-chang',    sub: '5016 Kinney Li SW · Apr 26, 9:00 PM' },
@@ -200,13 +222,30 @@ function Home({ onSelectBuyer, onStartNew }) {
     { kind: 'possession',icon: '🔑', text: 'Rachel Tremblay — possession in 35 days',        buyerId: 'rachel-tremblay', sub: '92 Terwillegar Vista NW · May 30' },
   ];
 
-  const upcoming = [
-    { date: 'Apr 26', when: 'Tomorrow', text: 'Eddy Chang — offer expiry',          buyerId: 'eddy-chang' },
-    { date: 'Apr 28', when: '3 days',   text: 'Priya Sandhu — condition removal',   buyerId: 'priya-sandhu' },
-    { date: 'May 15', when: '20 days',  text: 'Marcus Okafor — closing',            buyerId: 'marcus-okafor' },
-    { date: 'May 30', when: '35 days',  text: 'Rachel Tremblay — possession',       buyerId: 'rachel-tremblay' },
-    { date: 'Jun 15', when: '51 days',  text: 'Eddy Chang — closing (if accepted)', buyerId: 'eddy-chang' },
+  // Hardcoded deal milestones (offer expiry, condition removal, closing,
+  // possession). These will derive from real Sheets data once the watcher
+  // emits them — for now mocked.
+  const upcomingMilestones = [
+    { sortDate: '2026-04-26', text: 'Eddy Chang — offer expiry',          buyerId: 'eddy-chang' },
+    { sortDate: '2026-04-28', text: 'Priya Sandhu — condition removal',   buyerId: 'priya-sandhu' },
+    { sortDate: '2026-05-15', text: 'Marcus Okafor — closing',            buyerId: 'marcus-okafor' },
+    { sortDate: '2026-05-30', text: 'Rachel Tremblay — possession',       buyerId: 'rachel-tremblay' },
+    { sortDate: '2026-06-15', text: 'Eddy Chang — closing (if accepted)', buyerId: 'eddy-chang' },
   ];
+  // Showings derive from TOURS — auto-include the new buyers' bookings
+  const upcomingShowingRows = upcomingTours.map((t) => ({
+    sortDate: t.date,
+    text: `${t.buyer} — showing ${t.properties.length} ${t.properties.length === 1 ? 'property' : 'properties'}`,
+    buyerId: buyerIdByName[t.buyer] || null,
+  }));
+  const upcoming = [...upcomingMilestones, ...upcomingShowingRows]
+    .sort((a, b) => a.sortDate.localeCompare(b.sortDate))
+    .map((u) => ({
+      date: fmtShortDate(u.sortDate),
+      when: relativeWhen(u.sortDate),
+      text: u.text,
+      buyerId: u.buyerId,
+    }));
 
   return (
     <div style={{ padding: '32px 40px 60px', maxWidth: 1100, margin: '0 auto' }}>
