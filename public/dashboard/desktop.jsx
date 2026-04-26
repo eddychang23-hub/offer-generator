@@ -273,62 +273,27 @@ function NewBuyer({ onCancel, onSaved }) {
         </FieldGrid>
       </Card>
 
-      {/* Personal */}
+      {/* Optional ID upload — parse now if the buyer has provided their ID
+          early, otherwise these fields get captured on the FINTRAC-time
+          intake (see hint below). The upload widget is a placeholder until
+          /api/parse-id (Claude vision) is wired up. */}
       <Card pad={20} style={{ marginBottom: 18 }}>
-        <SectionLabel>Personal</SectionLabel>
-        <FieldGrid>
-          <Field label="Date of birth">
-            <input type="date" value={s.dob} onChange={(e) => set("dob", e.target.value)} style={inputStyle}/>
-          </Field>
-          <Field label="Occupation">
-            <input type="text" value={s.occupation} onChange={(e) => set("occupation", e.target.value)} placeholder="Software Engineer" style={inputStyle}/>
-          </Field>
-        </FieldGrid>
-      </Card>
-
-      {/* Address */}
-      <Card pad={20} style={{ marginBottom: 18 }}>
-        <SectionLabel>Home address</SectionLabel>
-        <FieldGrid>
-          <Field label="Street number">
-            <input type="text" value={s.street_num} onChange={(e) => set("street_num", e.target.value)} placeholder="4823" style={inputStyle}/>
-          </Field>
-          <Field label="Street">
-            <input type="text" value={s.street} onChange={(e) => set("street", e.target.value)} placeholder="109 Street NW" style={inputStyle}/>
-          </Field>
-          <Field label="City">
-            <input type="text" value={s.city} onChange={(e) => set("city", e.target.value)} placeholder="Edmonton" style={inputStyle}/>
-          </Field>
-          <Field label="Province">
-            <input type="text" value={s.state} onChange={(e) => set("state", e.target.value)} placeholder="AB" style={inputStyle}/>
-          </Field>
-          <Field label="Postal code">
-            <input type="text" value={s.zipcode} onChange={(e) => set("zipcode", e.target.value)} placeholder="T6H 1C5" style={inputStyle}/>
-          </Field>
-        </FieldGrid>
-      </Card>
-
-      {/* ID */}
-      <Card pad={20} style={{ marginBottom: 18 }}>
-        <SectionLabel>Identification</SectionLabel>
-        <FieldGrid>
-          <Field label="ID type">
-            <select value={s.id_document_type} onChange={(e) => set("id_document_type", e.target.value)} style={inputStyle}>
-              <option>Driver's Licence</option>
-              <option>Passport</option>
-              <option>Other</option>
-            </select>
-          </Field>
-          <Field label="ID number">
-            <input type="text" value={s.id_number} onChange={(e) => set("id_number", e.target.value)} placeholder="203-948-721" style={inputStyle}/>
-          </Field>
-          <Field label="Issuing jurisdiction">
-            <input type="text" value={s.id_issuing_jurisdiction} onChange={(e) => set("id_issuing_jurisdiction", e.target.value)} placeholder="Alberta" style={inputStyle}/>
-          </Field>
-          <Field label="Expiry date">
-            <input type="date" value={s.id_expiry_date} onChange={(e) => set("id_expiry_date", e.target.value)} style={inputStyle}/>
-          </Field>
-        </FieldGrid>
+        <SectionLabel>Upload ID — optional</SectionLabel>
+        <p style={{ margin: "0 0 12px", fontSize: 13, color: T.textDim, lineHeight: 1.5 }}>
+          If the buyer's already sent you their ID, upload here to auto-fill
+          DOB, address, and ID details. Otherwise these are captured later
+          (after offer acceptance) when FINTRAC needs them.
+        </p>
+        <input type="file" accept="image/*" capture="environment" disabled
+          style={{
+            width: "100%", padding: 12,
+            background: T.surface3, color: T.textMute,
+            border: `1px dashed ${T.border2}`, borderRadius: 8,
+            fontFamily: T.font, fontSize: 13, cursor: "not-allowed",
+          }}/>
+        <div style={{ marginTop: 8, fontSize: 11, color: T.textMute }}>
+          ID parse coming soon — /api/parse-id endpoint is not yet built.
+        </div>
       </Card>
 
       {error && (
