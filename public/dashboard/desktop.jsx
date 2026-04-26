@@ -198,11 +198,14 @@ function NewBuyer({ onCancel, onSaved }) {
   const set = (k, v) => setS((o) => ({ ...o, [k]: v }));
 
   // Auto-generated agreement number — buyer initials + MMYY (e.g. EC-0426).
-  // Falls back to legal_name's first word if preferred_name is left blank.
+  // Both first and last initial fall back to legal_name's words when the
+  // dedicated fields are blank.
   const agreementNumber = React.useMemo(() => {
-    const firstSource = (s.preferred_name || s.legal_name || "").trim();
+    const legalParts = (s.legal_name || "").trim().split(/\s+/).filter(Boolean);
+    const firstSource = (s.preferred_name || legalParts[0] || "").trim();
+    const lastSource  = (s.last_name || legalParts[legalParts.length - 1] || "").trim();
     const fi = firstSource[0] || "";
-    const li = (s.last_name || "").trim()[0] || "";
+    const li = lastSource[0]  || "";
     if (!fi && !li) return "";
     const now = new Date();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
@@ -210,8 +213,7 @@ function NewBuyer({ onCancel, onSaved }) {
     return `${(fi + li).toUpperCase()}-${mm}${yy}`;
   }, [s.preferred_name, s.legal_name, s.last_name]);
 
-  const canSubmit = s.last_name.trim() && s.legal_name.trim() &&
-                    s.email.trim() && !submitting;
+  const canSubmit = s.legal_name.trim() && s.email.trim() && !submitting;
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -256,7 +258,7 @@ function NewBuyer({ onCancel, onSaved }) {
           <Field label="Preferred name" hint="Optional — falls back to legal name">
             <input type="text" value={s.preferred_name} onChange={(e) => set("preferred_name", e.target.value)} placeholder="Eddy" style={inputStyle}/>
           </Field>
-          <Field label="Last name *">
+          <Field label="Last name" hint="Optional — derived from legal name if blank">
             <input type="text" value={s.last_name} onChange={(e) => set("last_name", e.target.value)} placeholder="Chang" style={inputStyle}/>
           </Field>
           <Field label="Legal name * (full name on ID)" wide>
