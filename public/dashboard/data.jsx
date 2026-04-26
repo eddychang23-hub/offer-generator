@@ -120,10 +120,65 @@ const BUYERS = [
     docs: { crg: true, bra: true, fintrac: true, rof: true, ti: true, waiver: true },
     activity: 'Possession Jan 15, 2026',
   },
+  {
+    id: 'sarah-mclean',
+    preferred: 'Sarah', last: 'McLean',
+    legal: '',
+    email: 'sarah.mclean@gmail.com',
+    phone: '',
+    dob: '',
+    occupation: '',
+    addr: { num: '', street: '', city: '', state: '', zip: '' },
+    idDoc: { type: '', num: '', juris: '', expiry: '' },
+    agreementNumber: '',
+    status: 'Showings Only',
+    activeAddress: null,
+    bra: null, crg: null,
+    docs: { crg: false, bra: false, fintrac: false, rof: false, ti: false, waiver: false },
+    activity: 'Tour booked Apr 27 — 3 properties',
+  },
+  {
+    id: 'noah-bennett',
+    preferred: 'Noah', last: 'Bennett',
+    legal: '',
+    email: 'n.bennett@telus.net',
+    phone: '',
+    dob: '',
+    occupation: '',
+    addr: { num: '', street: '', city: '', state: '', zip: '' },
+    idDoc: { type: '', num: '', juris: '', expiry: '' },
+    agreementNumber: '',
+    status: 'Showings Only',
+    activeAddress: null,
+    bra: null, crg: null,
+    docs: { crg: false, bra: false, fintrac: false, rof: false, ti: false, waiver: false },
+    activity: 'Tour booked Apr 30 — 2 properties',
+  },
 ];
 
-// Showings tours
+// Showings tours — past tours + 2 upcoming bookings
 const TOURS = [
+  {
+    id: 'tour-apr30',
+    buyer: 'Noah Bennett',
+    date: '2026-04-30',
+    upcoming: true,
+    properties: [
+      { mls: 'E4522145', address: '14829 Riverbend Road SW', price: 565000, beds: 3, baths: 2.5, sqft: 1840 },
+      { mls: 'E4522210', address: '2055 Sage Court NW',      price: 599000, beds: 4, baths: 3,   sqft: 2010 },
+    ],
+  },
+  {
+    id: 'tour-apr27',
+    buyer: 'Sarah McLean',
+    date: '2026-04-27',
+    upcoming: true,
+    properties: [
+      { mls: 'E4521980', address: '7240 Magrath Heights NW', price: 715000, beds: 4, baths: 3.5, sqft: 2380 },
+      { mls: 'E4521765', address: '309 Belmont Drive NW',    price: 645000, beds: 3, baths: 2.5, sqft: 1990 },
+      { mls: 'E4521402', address: '1145 Twin Brooks Way SW', price: 799000, beds: 5, baths: 4,   sqft: 2750 },
+    ],
+  },
   {
     id: 'tour-apr22',
     buyer: 'Marcus Okafor',
