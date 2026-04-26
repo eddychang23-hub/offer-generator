@@ -29,13 +29,14 @@ function DesktopApp() {
       fontFamily: T.font, fontSize: 14, lineHeight: 1.45,
       WebkitFontSmoothing: 'antialiased',
       display: 'grid',
-      gridTemplateColumns: '64px 360px 1fr',
+      gridTemplateColumns: view === 'home' ? '64px 1fr' : '64px 360px 1fr',
       overflow: 'hidden',
     }}>
       {/* Rail — global nav */}
       <Rail view={view} onSelect={setView}/>
 
-      {/* Sidebar — buyer list */}
+      {/* Sidebar — buyer list (hidden in 'home' view) */}
+      {view === 'buyers' ? (
       <aside style={{
         background: '#0F1216',
         borderRight: `1px solid ${T.border}`,
@@ -105,6 +106,7 @@ function DesktopApp() {
           </Btn>
         </div>
       </aside>
+      ) : null}
 
       {/* Main pane */}
       <main style={{ overflowY: 'auto', minHeight: 0 }}>
