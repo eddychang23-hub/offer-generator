@@ -117,13 +117,17 @@ function setHash(name, params = {}) {
 
 async function loadBuyersFromAPI() {
   try {
-    const res = await fetch('/api/buyers');
+    // Hard timeout — never let the dashboard hang waiting on the API.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    const res = await fetch('/api/buyers', { signal: ctrl.signal });
+    clearTimeout(timer);
     if (!res.ok) return null;
     const json = await res.json();
     if (!Array.isArray(json.buyers)) return null;
     // Map API row shape (flat columns) → screen shape (nested addr/idDoc/docs)
-    return json.buyers.map(b => ({
-      id: b.buyer_id || b.preferred_name?.toLowerCase().replace(/\s+/g, '-'),
+    return json.buyers.map(function(b) { return {
+      id: b.buyer_id || (b.preferred_name || '').toLowerCase().replace(/\s+/g, '-'),
       preferred: b.preferred_name || '',
       last: b.last_name || '',
       legal: b.legal_name || '',
@@ -155,7 +159,7 @@ async function loadBuyersFromAPI() {
         fintrac: false, rof: false, ti: false, waiver: false,
       },
       activity: b.updated_at ? `Updated ${b.updated_at}` : '',
-    }));
+    }; });
   } catch (err) {
     console.warn('loadBuyersFromAPI failed:', err);
     return null;
@@ -264,6 +268,19 @@ async function boot() {
     }
   }
 }
+
+// Catch async/promise rejections — boot is async so it can swallow these.
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('Unhandled promise rejection:', e.reason);
+  const shell = document.getElementById('app-shell');
+  if (shell && shell.querySelector('#boot-loader')) {
+    shell.innerHTML = '';
+    const errBox = document.createElement('pre');
+    errBox.style.cssText = 'color:#E66B6B;background:#14171C;padding:20px;margin:20px;border-radius:10px;white-space:pre-wrap;font-family:monospace;font-size:12px;line-height:1.5;';
+    errBox.textContent = 'Promise rejection:\n\n' + (e.reason && e.reason.stack || String(e.reason));
+    shell.appendChild(errBox);
+  }
+});
 
 // Catch globally — any sync errors during script load (Babel compile etc)
 window.addEventListener('error', (e) => {
