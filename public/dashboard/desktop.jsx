@@ -114,6 +114,12 @@ function DesktopApp() {
           <Home
             onSelectBuyer={(id) => { setView('buyers'); setRoute({ name: 'detail', id }); }}
             onStartNew={() => { setView('buyers'); setRoute({ name: 'wizard' }); }}
+            onNewBuyer={() => { setView('buyers'); setRoute({ name: 'newbuyer' }); }}
+          />
+        ) : route.name === 'newbuyer' ? (
+          <NewBuyer
+            onCancel={() => setRoute({ name: 'detail', id: BUYERS[0]?.id || '' })}
+            onSaved={() => { window.location.hash = ''; window.location.reload(); }}
           />
         ) : route.name === 'wizard' ? (
           <WizardPane onClose={() => setRoute({ name: 'detail', id: 'eddy-chang' })}/>
@@ -173,12 +179,195 @@ function Rail({ view, onSelect }) {
   );
 }
 
+// ─── New Buyer form ───────────────────────────────────────────
+// Single-screen intake. Writes to /api/buyers and on success navigates
+// to the buyer detail page where the agent can generate paperwork.
+function NewBuyer({ onCancel, onSaved }) {
+  const [s, setS] = React.useState({
+    preferred_name: "", last_name: "", legal_name: "",
+    email: "", dob: "", occupation: "",
+    street_num: "", street: "", city: "", state: "AB", zipcode: "",
+    id_document_type: "Driver's Licence",
+    id_number: "", id_issuing_jurisdiction: "AB", id_expiry_date: "",
+  });
+  const [submitting, setSubmitting] = React.useState(false);
+  const [error, setError] = React.useState(null);
+  const set = (k, v) => setS((o) => ({ ...o, [k]: v }));
+
+  // Auto-generated agreement number — buyer initials + MMYY (e.g. EC-0426)
+  const agreementNumber = React.useMemo(() => {
+    const fi = (s.preferred_name || "").trim()[0] || "";
+    const li = (s.last_name || "").trim()[0] || "";
+    if (!fi && !li) return "";
+    const now = new Date();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const yy = String(now.getFullYear() % 100).padStart(2, "0");
+    return `${(fi + li).toUpperCase()}-${mm}${yy}`;
+  }, [s.preferred_name, s.last_name]);
+
+  const canSubmit = s.preferred_name.trim() && s.last_name.trim() &&
+                    s.legal_name.trim() && s.email.trim() && !submitting;
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/buyers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...s, agreement_number: agreementNumber }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        onSaved && onSaved(json.buyer_id);
+      } else {
+        setError(json.error || "Failed to save");
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ padding: "32px 40px 60px", maxWidth: 760, margin: "0 auto" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: "uppercase" }}>New Buyer</div>
+          <h1 style={{ margin: "4px 0 0", fontSize: 26, fontWeight: 700, letterSpacing: -0.5 }}>Add a buyer file</h1>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: T.textDim }}>
+            Saved to the Buyers tab. Generate paperwork from the detail page.
+          </p>
+        </div>
+        <Btn variant="ghost" size="sm" onClick={onCancel}>Cancel</Btn>
+      </div>
+
+      {/* Identity */}
+      <Card pad={20} style={{ marginBottom: 18 }}>
+        <SectionLabel>Identity</SectionLabel>
+        <FieldGrid>
+          <Field label="Preferred name *">
+            <input type="text" value={s.preferred_name} onChange={(e) => set("preferred_name", e.target.value)} placeholder="Eddy" style={inputStyle}/>
+          </Field>
+          <Field label="Last name *">
+            <input type="text" value={s.last_name} onChange={(e) => set("last_name", e.target.value)} placeholder="Chang" style={inputStyle}/>
+          </Field>
+          <Field label="Legal name * (full name on ID)" wide>
+            <input type="text" value={s.legal_name} onChange={(e) => set("legal_name", e.target.value)} placeholder="Edward Chang" style={inputStyle}/>
+          </Field>
+          <Field label="Email *">
+            <input type="email" value={s.email} onChange={(e) => set("email", e.target.value)} placeholder="eddy.chang@gmail.com" style={inputStyle}/>
+          </Field>
+          <Field label="Agreement number" hint="Auto-generated from initials + MM/YY">
+            <input type="text" value={agreementNumber} readOnly style={{ ...inputStyle, opacity: 0.7 }}/>
+          </Field>
+        </FieldGrid>
+      </Card>
+
+      {/* Personal */}
+      <Card pad={20} style={{ marginBottom: 18 }}>
+        <SectionLabel>Personal</SectionLabel>
+        <FieldGrid>
+          <Field label="Date of birth">
+            <input type="date" value={s.dob} onChange={(e) => set("dob", e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Occupation">
+            <input type="text" value={s.occupation} onChange={(e) => set("occupation", e.target.value)} placeholder="Software Engineer" style={inputStyle}/>
+          </Field>
+        </FieldGrid>
+      </Card>
+
+      {/* Address */}
+      <Card pad={20} style={{ marginBottom: 18 }}>
+        <SectionLabel>Home address</SectionLabel>
+        <FieldGrid>
+          <Field label="Street number">
+            <input type="text" value={s.street_num} onChange={(e) => set("street_num", e.target.value)} placeholder="4823" style={inputStyle}/>
+          </Field>
+          <Field label="Street">
+            <input type="text" value={s.street} onChange={(e) => set("street", e.target.value)} placeholder="109 Street NW" style={inputStyle}/>
+          </Field>
+          <Field label="City">
+            <input type="text" value={s.city} onChange={(e) => set("city", e.target.value)} placeholder="Edmonton" style={inputStyle}/>
+          </Field>
+          <Field label="Province">
+            <input type="text" value={s.state} onChange={(e) => set("state", e.target.value)} placeholder="AB" style={inputStyle}/>
+          </Field>
+          <Field label="Postal code">
+            <input type="text" value={s.zipcode} onChange={(e) => set("zipcode", e.target.value)} placeholder="T6H 1C5" style={inputStyle}/>
+          </Field>
+        </FieldGrid>
+      </Card>
+
+      {/* ID */}
+      <Card pad={20} style={{ marginBottom: 18 }}>
+        <SectionLabel>Identification</SectionLabel>
+        <FieldGrid>
+          <Field label="ID type">
+            <select value={s.id_document_type} onChange={(e) => set("id_document_type", e.target.value)} style={inputStyle}>
+              <option>Driver's Licence</option>
+              <option>Passport</option>
+              <option>Other</option>
+            </select>
+          </Field>
+          <Field label="ID number">
+            <input type="text" value={s.id_number} onChange={(e) => set("id_number", e.target.value)} placeholder="203-948-721" style={inputStyle}/>
+          </Field>
+          <Field label="Issuing jurisdiction">
+            <input type="text" value={s.id_issuing_jurisdiction} onChange={(e) => set("id_issuing_jurisdiction", e.target.value)} placeholder="Alberta" style={inputStyle}/>
+          </Field>
+          <Field label="Expiry date">
+            <input type="date" value={s.id_expiry_date} onChange={(e) => set("id_expiry_date", e.target.value)} style={inputStyle}/>
+          </Field>
+        </FieldGrid>
+      </Card>
+
+      {error && (
+        <div style={{ background: "rgba(230,107,107,0.12)", color: "#F0A5A5", padding: "10px 14px", borderRadius: 8, marginBottom: 14, fontSize: 13 }}>
+          {error}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+        <Btn variant="secondary" size="md" onClick={onCancel}>Cancel</Btn>
+        <Btn size="md" disabled={!canSubmit} onClick={handleSubmit}>
+          {submitting ? "Saving…" : "Save Buyer"}
+        </Btn>
+      </div>
+    </div>
+  );
+}
+
+// Small layout helpers used by the form
+const inputStyle = {
+  width: "100%", height: 38, padding: "0 12px",
+  background: T.surface3, color: T.text,
+  border: `1px solid ${T.border}`, borderRadius: 8,
+  fontFamily: T.font, fontSize: 14,
+  outline: "none", boxSizing: "border-box",
+};
+function FieldGrid({ children }) {
+  return <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>{children}</div>;
+}
+function Field({ label, hint, wide, children }) {
+  return (
+    <label style={{ display: "block", gridColumn: wide ? "1 / -1" : "auto" }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: T.textMute, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
+      {children}
+      {hint && <div style={{ fontSize: 11, color: T.textMute, marginTop: 4 }}>{hint}</div>}
+    </label>
+  );
+}
+
+
 // ─── Home / Overview ──────────────────────────────────────────
 // First screen the agent sees. Pipeline stats + urgent items +
 // upcoming dates + recent activity. Stats derive from BUYERS; the
 // urgent/upcoming/activity arrays are mocked until the watcher writes
 // derived signals to a Sheets tab we can read.
-function Home({ onSelectBuyer, onStartNew }) {
+function Home({ onSelectBuyer, onStartNew, onNewBuyer }) {
   const today = new Date();
   const monthName = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
   const weekday = today.toLocaleDateString('en-US', { weekday: 'long' });
@@ -254,7 +443,10 @@ function Home({ onSelectBuyer, onStartNew }) {
           <div style={{ fontSize: 12, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: 'uppercase' }}>{weekday}</div>
           <h1 style={{ margin: '4px 0 0', fontSize: 30, fontWeight: 700, letterSpacing: -0.6 }}>{monthName}</h1>
         </div>
-        <Btn size="md" onClick={onStartNew}>+ Start New Paperwork</Btn>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Btn variant="secondary" size="md" onClick={onNewBuyer}>+ Add Buyer</Btn>
+          <Btn size="md" onClick={onStartNew}>Start New Paperwork</Btn>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 32 }}>
