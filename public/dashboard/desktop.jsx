@@ -108,8 +108,13 @@ function DesktopApp() {
 
       {/* Main pane */}
       <main style={{ overflowY: 'auto', minHeight: 0 }}>
-        {route.name === 'detail' && <DetailPane buyer={BUYERS.find((b) => b.id === route.id) || BUYERS[0]} onWizard={() => setRoute({ name: 'wizard' })}/>}
-        {route.name === 'wizard' && <WizardPane onClose={() => setRoute({ name: 'detail', id: 'eddy-chang' })}/>}
+        {view === 'home' ? (
+          <Home/>
+        ) : route.name === 'wizard' ? (
+          <WizardPane onClose={() => setRoute({ name: 'detail', id: 'eddy-chang' })}/>
+        ) : (
+          <DetailPane buyer={BUYERS.find((b) => b.id === route.id) || BUYERS[0]} onWizard={() => setRoute({ name: 'wizard' })}/>
+        )}
       </main>
     </div>
   );
@@ -160,6 +165,32 @@ function Rail({ view, onSelect }) {
         fontSize: 12, fontWeight: 700, color: '#fff',
       }}>RA</div>
     </nav>
+  );
+}
+
+// ─── Home / Overview ──────────────────────────────────────────
+// Minimal placeholder for now — first paint of the Home view, no data
+// dependencies so it can't crash. Real content (stats, urgent items,
+// activity feed) lands in a follow-up commit once we know rendering
+// works.
+function Home() {
+  const today = new Date();
+  const monthName = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  const weekday = today.toLocaleDateString('en-US', { weekday: 'long' });
+  return (
+    <div style={{ padding: '32px 40px 60px', maxWidth: 1100, margin: '0 auto' }}>
+      <div style={{ fontSize: 12, color: T.textMute, letterSpacing: 0.6, textTransform: 'uppercase', fontWeight: 700 }}>
+        {weekday}
+      </div>
+      <h1 style={{ margin: '4px 0 0', fontSize: 30, fontWeight: 700, letterSpacing: -0.6 }}>
+        {monthName}
+      </h1>
+      <p style={{ marginTop: 24, fontSize: 14, color: T.textDim, lineHeight: 1.6 }}>
+        Home view scaffolding — pipeline stats, urgent items, upcoming dates,
+        and recent activity will land here next. For now, click <strong style={{ color: T.text }}>Buyers</strong> in
+        the rail to see the buyer list.
+      </p>
+    </div>
   );
 }
 
