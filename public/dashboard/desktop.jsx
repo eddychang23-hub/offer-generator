@@ -196,6 +196,36 @@ function Home() {
   );
 }
 
+// ─── Identity strip ───────────────────────────────────────────
+// Compact replacement for the old right-column Identity panel — fits
+// inline in the detail pane as a single 3-column card.
+function IdentityStrip({ b, fullAddr }) {
+  const items = [
+    { label: 'Legal name', value: b.legal },
+    { label: 'DOB',        value: fmtDate(b.dob) },
+    { label: 'Occupation', value: b.occupation },
+    { label: 'Address',    value: fullAddr },
+    { label: 'ID',         value: `${b.idDoc.type} · ${b.idDoc.num} · ${b.idDoc.juris}`, mono: true },
+    { label: 'ID expiry',  value: fmtDate(b.idDoc.expiry) },
+  ];
+  return (
+    <Card pad={0}>
+      <div style={{ padding: '12px 18px', borderBottom: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: 'uppercase' }}>Identity</span>
+        <Btn size="sm" variant="ghost">Edit</Btn>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', padding: '14px 18px', gap: '12px 24px' }}>
+        {items.map((it) => (
+          <div key={it.label}>
+            <div style={{ fontSize: 11, color: T.textMute, letterSpacing: 0.3, textTransform: 'uppercase', fontWeight: 600 }}>{it.label}</div>
+            <div style={{ fontSize: 13, color: T.text, marginTop: 3, fontFamily: it.mono ? T.mono : T.font, fontWeight: 500 }}>{it.value}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 // ─── Detail pane ──────────────────────────────────────────────
 function DetailPane({ buyer: b, onWizard }) {
   const fullAddr = `${b.addr.num} ${b.addr.street}, ${b.addr.city}, ${b.addr.state} ${b.addr.zip}`;
@@ -264,6 +294,9 @@ function DetailPane({ buyer: b, onWizard }) {
               </div>
             </Card>
           )}
+
+          {/* Identity strip — compact inline replacement for the old right column */}
+          <IdentityStrip b={b} fullAddr={fullAddr}/>
 
           {/* Documents — table on desktop */}
           <div>
