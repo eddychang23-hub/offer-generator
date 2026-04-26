@@ -72,6 +72,14 @@
 <script type="text/babel" src="/dashboard/desktop.jsx"></script>
 
 <script type="text/babel">
+// SMOKE TEST: if you see "INLINE OK" in the loader, this script's
+// top-level code ran. If you still see "Loading…", Babel didn't
+// compile this script (look in browser console for the error).
+(function() {
+  var loader = document.getElementById('boot-loader');
+  if (loader) loader.textContent = 'INLINE OK — waiting for boot()…';
+})();
+
 // ─────────────────────────────────────────────────────────────
 // Hash-based router → preserves nav state across refresh + supports
 // browser back/forward. Routes:
@@ -242,18 +250,28 @@ function Root() {
 // first paint already shows real data instead of flashing mocks.
 // ─────────────────────────────────────────────────────────────
 
+function setStage(label) {
+  const loader = document.getElementById('boot-loader');
+  if (loader) loader.textContent = label;
+  console.log('[dashboard]', label);
+}
+
 async function boot() {
   try {
+    setStage('Stage 1: boot() entered');
     const apiBuyers = await loadBuyersFromAPI();
+    setStage('Stage 2: API responded');
     if (apiBuyers && apiBuyers.length > 0) {
       window.BUYERS = apiBuyers;
     }
     // else: keep window.BUYERS from data.jsx (mock data — handy until the
     // Buyers tab has rows). When you add a real buyer, the API replaces it.
 
+    setStage('Stage 3: about to render');
     const shell = document.getElementById('app-shell');
     shell.innerHTML = ''; // clear loader
     ReactDOM.createRoot(shell).render(<Root/>);
+    console.log('[dashboard] render called');
   } catch (err) {
     // Make any boot/render error visible instead of silently showing
     // a blank screen — easier to diagnose from the browser.
