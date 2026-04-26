@@ -3,6 +3,10 @@
 // Input, Toggle, Check, RadioGroup, Section, fmtDate) from shared.jsx + buyer-detail.jsx.
 
 function DesktopApp() {
+  // Top-level view: 'home' (overview) | 'buyers' (list + detail).
+  // Step 1 of the rebuild — both currently render the buyer layout;
+  // a dedicated Home component arrives in step 2.
+  const [view, setView] = React.useState('buyers');
   const [route, setRoute] = React.useState({ name: 'detail', id: 'eddy-chang' });
   const [filter, setFilter] = React.useState('All');
   const [q, setQ] = React.useState('');
@@ -29,7 +33,7 @@ function DesktopApp() {
       overflow: 'hidden',
     }}>
       {/* Rail — global nav */}
-      <Rail/>
+      <Rail view={view} onSelect={setView}/>
 
       {/* Sidebar — buyer list */}
       <aside style={{
@@ -112,13 +116,13 @@ function DesktopApp() {
 }
 
 // ─── Rail ─────────────────────────────────────────────────────
-function Rail() {
+// Two functional icons (Home + Buyers) — others removed until they have
+// real screens. Active item gets the accent treatment; clicking switches
+// the top-level view in the parent.
+function Rail({ view, onSelect }) {
   const items = [
-    { name: 'Buyers', active: true, icon: <path d="M9 9a3 3 0 100-6 3 3 0 000 6zM3 16c0-3 3-5 6-5s6 2 6 5"/> },
-    { name: 'Showings', icon: <path d="M3 8l6-5l6 5v8H3V8z M7 16v-5h4v5"/> },
-    { name: 'Calendar', icon: <path d="M3 5h12v10H3V5z M3 8h12 M6 3v3 M12 3v3"/> },
-    { name: 'Templates', icon: <path d="M4 3h7l3 3v9H4V3z M11 3v3h3"/> },
-    { name: 'Settings', icon: <path d="M9 6.5a2.5 2.5 0 100 5a2.5 2.5 0 000-5z M9 1v2 M9 15v2 M3 9H1 M17 9h-2 M4 4l1.5 1.5 M14 14l-1.5-1.5 M14 4l-1.5 1.5 M4 14l1.5-1.5"/> },
+    { key: 'home',   label: 'Home',   icon: <path d="M3 8l6-5l6 5v8H3V8z M7 16v-5h4v5"/> },
+    { key: 'buyers', label: 'Buyers', icon: <path d="M9 9a3 3 0 100-6 3 3 0 000 6zM3 16c0-3 3-5 6-5s6 2 6 5"/> },
   ];
   return (
     <nav style={{
@@ -132,18 +136,22 @@ function Rail() {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 15, fontWeight: 800, fontFamily: T.mono, letterSpacing: -0.5,
       }}>BF</div>
-      {items.map((it) => (
-        <button key={it.name} title={it.name} style={{
-          width: 40, height: 40, borderRadius: 9, border: 'none', cursor: 'pointer',
-          background: it.active ? 'rgba(55,217,168,0.1)' : 'transparent',
-          color: it.active ? T.accent : T.textDim,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            {it.icon}
-          </svg>
-        </button>
-      ))}
+      {items.map((it) => {
+        const active = view === it.key;
+        return (
+          <button key={it.key} title={it.label} onClick={() => onSelect && onSelect(it.key)} style={{
+            width: 40, height: 40, borderRadius: 9, border: 'none', cursor: 'pointer',
+            background: active ? 'rgba(55,217,168,0.1)' : 'transparent',
+            color: active ? T.accent : T.textDim,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all .12s',
+          }}>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              {it.icon}
+            </svg>
+          </button>
+        );
+      })}
       <div style={{ flex: 1 }}/>
       <div style={{
         width: 32, height: 32, borderRadius: 16,
