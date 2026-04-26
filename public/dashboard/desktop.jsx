@@ -197,19 +197,21 @@ function NewBuyer({ onCancel, onSaved }) {
   const [error, setError] = React.useState(null);
   const set = (k, v) => setS((o) => ({ ...o, [k]: v }));
 
-  // Auto-generated agreement number — buyer initials + MMYY (e.g. EC-0426)
+  // Auto-generated agreement number — buyer initials + MMYY (e.g. EC-0426).
+  // Falls back to legal_name's first word if preferred_name is left blank.
   const agreementNumber = React.useMemo(() => {
-    const fi = (s.preferred_name || "").trim()[0] || "";
+    const firstSource = (s.preferred_name || s.legal_name || "").trim();
+    const fi = firstSource[0] || "";
     const li = (s.last_name || "").trim()[0] || "";
     if (!fi && !li) return "";
     const now = new Date();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const yy = String(now.getFullYear() % 100).padStart(2, "0");
     return `${(fi + li).toUpperCase()}-${mm}${yy}`;
-  }, [s.preferred_name, s.last_name]);
+  }, [s.preferred_name, s.legal_name, s.last_name]);
 
-  const canSubmit = s.preferred_name.trim() && s.last_name.trim() &&
-                    s.legal_name.trim() && s.email.trim() && !submitting;
+  const canSubmit = s.last_name.trim() && s.legal_name.trim() &&
+                    s.email.trim() && !submitting;
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -251,7 +253,7 @@ function NewBuyer({ onCancel, onSaved }) {
       <Card pad={20} style={{ marginBottom: 18 }}>
         <SectionLabel>Identity</SectionLabel>
         <FieldGrid>
-          <Field label="Preferred name *">
+          <Field label="Preferred name" hint="Optional — falls back to legal name">
             <input type="text" value={s.preferred_name} onChange={(e) => set("preferred_name", e.target.value)} placeholder="Eddy" style={inputStyle}/>
           </Field>
           <Field label="Last name *">
