@@ -119,7 +119,12 @@ function DesktopApp() {
         ) : route.name === 'newbuyer' ? (
           <NewBuyer
             onCancel={() => setRoute({ name: 'detail', id: BUYERS[0]?.id || '' })}
-            onSaved={() => { window.location.hash = ''; window.location.reload(); }}
+            onSaved={(buyer_id) => setRoute({ name: 'pickproperty', id: buyer_id })}
+          />
+        ) : route.name === 'pickproperty' ? (
+          <PickProperty
+            buyerId={route.id}
+            onDone={() => { window.location.hash = ''; window.location.reload(); }}
           />
         ) : route.name === 'wizard' ? (
           <WizardPane
@@ -319,7 +324,114 @@ function NewBuyer({ onCancel, onSaved }) {
       <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
         <Btn variant="secondary" size="md" onClick={onCancel}>Cancel</Btn>
         <Btn size="md" disabled={!canSubmit} onClick={handleSubmit}>
-          {submitting ? "Saving…" : "Save Buyer"}
+          {submitting ? "Saving…" : "Save & Continue →"}
+        </Btn>
+      </div>
+    </div>
+  );
+}
+
+
+// ─── Pick property (post-buyer-save step) ─────────────────────
+// Shown right after a new buyer is saved. Lists recent tours so the
+// agent can pick a property to write an offer on, or upload a fresh
+// MLS sheet for a property that wasn't part of a tour. Skipping is
+// fine — the buyer file is already saved.
+function PickProperty({ buyerId, onDone }) {
+  const buyer = (Array.isArray(BUYERS) ? BUYERS : []).find(b => b.id === buyerId);
+  const safeTours = Array.isArray(TOURS) ? TOURS : [];
+
+  const [selected, setSelected] = React.useState(null);  // {tour, property}
+  const [mlsFile, setMlsFile] = React.useState(null);
+
+  return (
+    <div style={{ padding: "32px 40px 60px", maxWidth: 900, margin: "0 auto" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: "uppercase" }}>
+            Buyer saved · Step 2
+          </div>
+          <h1 style={{ margin: "4px 0 0", fontSize: 26, fontWeight: 700, letterSpacing: -0.5 }}>
+            Pick a property
+          </h1>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: T.textDim, lineHeight: 1.5 }}>
+            {buyer ? `For ${displayName(buyer)}.` : ""} Choose a recent tour property,
+            upload an MLS sheet, or skip and come back later.
+          </p>
+        </div>
+        <Btn variant="ghost" size="sm" onClick={onDone}>Skip for now →</Btn>
+      </div>
+
+      <SectionLabel>From your tours</SectionLabel>
+      {safeTours.length === 0 ? (
+        <Card pad={20}>
+          <p style={{ margin: 0, color: T.textDim, fontSize: 13 }}>No tours yet.</p>
+        </Card>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
+          {safeTours.map(t => (
+            <Card key={t.id} pad={14}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 650 }}>{t.date}</div>
+                  <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>
+                    {t.buyer} · {t.properties.length} {t.properties.length === 1 ? "property" : "properties"}
+                  </div>
+                </div>
+                {t.upcoming && (
+                  <span style={{ fontSize: 10, color: T.accent, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>
+                    Upcoming
+                  </span>
+                )}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {t.properties.map(p => {
+                  const isSel = selected && selected.tour === t.id && selected.property === p.mls;
+                  return (
+                    <button key={p.mls} onClick={() => setSelected({ tour: t.id, property: p.mls, addr: p.address })}
+                      style={{
+                        all: "unset", cursor: "pointer", padding: 12, borderRadius: 8,
+                        background: isSel ? "rgba(55,217,168,0.07)" : T.surface2,
+                        border: `1px solid ${isSel ? T.accent : T.border}`,
+                      }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>{p.address}</div>
+                      <div style={{ fontSize: 11.5, color: T.textDim, fontFamily: T.mono }}>
+                        {p.mls} · ${p.price?.toLocaleString()} · {p.beds}bd / {p.baths}ba
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <SectionLabel>Or upload an MLS sheet</SectionLabel>
+      <Card pad={20} style={{ marginBottom: 28 }}>
+        <p style={{ margin: "0 0 12px", fontSize: 13, color: T.textDim, lineHeight: 1.5 }}>
+          For properties that weren't part of a tour. Same parsing pipeline as the
+          showing automation — extracts MLS, address, price, sellers, listing
+          brokerage, inclusions, exclusions.
+        </p>
+        <input type="file" accept="application/pdf" onChange={(e) => setMlsFile(e.target.files[0] || null)}
+          style={{
+            width: "100%", padding: 12,
+            background: T.surface3, color: T.text,
+            border: `1px dashed ${T.border2}`, borderRadius: 8,
+            fontFamily: T.font, fontSize: 13,
+          }}/>
+        {mlsFile && (
+          <div style={{ marginTop: 8, fontSize: 12, color: T.textMute }}>
+            Selected: {mlsFile.name} (parsing not yet wired)
+          </div>
+        )}
+      </Card>
+
+      <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+        <Btn variant="secondary" size="md" onClick={onDone}>Skip</Btn>
+        <Btn size="md" disabled={!selected && !mlsFile} onClick={onDone}>
+          Continue →
         </Btn>
       </div>
     </div>
