@@ -239,10 +239,9 @@ function DetailPane({ buyer: b, onWizard }) {
         </div>
       </div>
 
-      {/* Two-column body */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24, padding: '24px 32px 40px' }}>
-        {/* Left column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24, minWidth: 0 }}>
+      {/* Body — single column, max 1100 wide, centered */}
+      <div style={{ padding: '24px 32px 40px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24, minWidth: 0, maxWidth: 1100, margin: '0 auto' }}>
           {/* Active deal banner */}
           {b.activeAddress && (
             <Card pad={18} style={{
@@ -333,33 +332,6 @@ function DetailPane({ buyer: b, onWizard }) {
             </Card>
           </div>
         </div>
-
-        {/* Right column — identity */}
-        <aside style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Card pad={0}>
-            <div style={{ padding: '14px 16px', borderBottom: `1px solid ${T.border}` }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: 'uppercase' }}>Identity</div>
-            </div>
-            <KVRow label="Legal name" value={b.legal}/>
-            <KVRow label="DOB" value={fmtDate(b.dob)}/>
-            <KVRow label="Occupation" value={b.occupation}/>
-            <KVRow label="Phone" value={b.phone}/>
-            <KVRow label="Address" value={fullAddr} multi/>
-            <KVRow label="ID type" value={b.idDoc.type}/>
-            <KVRow label="ID number" value={b.idDoc.num} mono/>
-            <KVRow label="Jurisdiction" value={b.idDoc.juris}/>
-            <KVRow label="Expiry" value={fmtDate(b.idDoc.expiry)} last/>
-          </Card>
-
-          <Card pad={14}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 8 }}>Quick Actions</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <Btn variant="secondary" size="sm" full>Email Drive Folder</Btn>
-              <Btn variant="secondary" size="sm" full>Upload Title Document</Btn>
-              <Btn variant="secondary" size="sm" full>Archive Buyer</Btn>
-            </div>
-          </Card>
-        </aside>
       </div>
     </div>
   );
