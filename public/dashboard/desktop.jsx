@@ -186,7 +186,12 @@ function Home({ onSelectBuyer, onStartNew }) {
   const safeBuyers = Array.isArray(BUYERS) ? BUYERS : [];
   const activeDeals = safeBuyers.filter((b) => ['Offer Out', 'Accepted', 'Conditions Pending', 'Pending Possession'].includes(b.status)).length;
   const closingThisMonth = safeBuyers.filter((b) => b.status === 'Pending Possession').length;
-  const showingsThisWeek = 8; // mock — derive from Showings tab when wired up
+  const showingsScheduled = 5; // mock — derive from Showings tab (count rows with showing_date >= today)
+
+  // Drive — pull from defaults.json on the watcher side; here we hardcode the
+  // Deals parent folder. Year auto-detection happens server-side eventually.
+  const driveDealsFolderId = '1JcKlfFgkHhI0TGrMkxlxiSyFbpvEI_SW';
+  const driveDealsUrl = `https://drive.google.com/drive/folders/${driveDealsFolderId}`;
 
   const urgent = [
     { kind: 'expiry',    icon: '🔥', text: 'Eddy Chang — offer expires in 22 hours',         buyerId: 'eddy-chang',    sub: '5016 Kinney Li SW · Apr 26, 9:00 PM' },
@@ -203,14 +208,6 @@ function Home({ onSelectBuyer, onStartNew }) {
     { date: 'Jun 15', when: '51 days',  text: 'Eddy Chang — closing (if accepted)', buyerId: 'eddy-chang' },
   ];
 
-  const activity = [
-    { ago: '2h ago', text: 'Offer sent to RE/MAX (Eddy + Vanessa, 5016 Kinney Li SW)', buyerId: 'eddy-chang' },
-    { ago: '1d ago', text: 'BRA signed — Marcus Okafor (MO-0326)',                     buyerId: 'marcus-okafor' },
-    { ago: '3d ago', text: 'CRG generated — Jamie Fitzgerald',                         buyerId: 'james-fitz' },
-    { ago: '5d ago', text: 'Possession complete — Alina Popescu, moved to Closed',     buyerId: 'alina-popescu' },
-    { ago: '1w ago', text: 'FINTRAC package generated — Priya Sandhu (3 documents)',   buyerId: 'priya-sandhu' },
-  ];
-
   return (
     <div style={{ padding: '32px 40px 60px', maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
@@ -222,9 +219,9 @@ function Home({ onSelectBuyer, onStartNew }) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 32 }}>
-        <HeroStat label="Active Deals"        value={activeDeals}        sub="Offer out · Accepted · Pending"/>
-        <HeroStat label="Showings This Week"  value={showingsThisWeek}   sub="Across 4 buyers"/>
-        <HeroStat label="Closing This Month"  value={closingThisMonth}   sub={closingThisMonth ? 'Possession scheduled' : 'No closings yet'}/>
+        <HeroStat label="Active Deals"        value={activeDeals}       sub="Offer out · Accepted · Pending"/>
+        <HeroStat label="Showings Scheduled"  value={showingsScheduled} sub="Upcoming this week + next"/>
+        <HeroStat label="Closing This Month"  value={closingThisMonth}  sub={closingThisMonth ? 'Possession scheduled' : 'No closings yet'}/>
       </div>
 
       <SectionLabel>Urgent — needs attention</SectionLabel>
@@ -247,41 +244,46 @@ function Home({ onSelectBuyer, onStartNew }) {
         ))}
       </Card>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
-        <div>
-          <SectionLabel>Upcoming (next 30 days)</SectionLabel>
-          <Card pad={0}>
-            {upcoming.map((u, i) => (
-              <button key={i} onClick={() => onSelectBuyer && onSelectBuyer(u.buyerId)} style={{
-                all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14,
-                padding: '12px 18px', width: '100%', boxSizing: 'border-box',
-                borderBottom: i === upcoming.length - 1 ? 'none' : `1px solid ${T.border}`,
-              }}>
-                <div style={{ width: 56, flexShrink: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: T.text, fontFamily: T.mono }}>{u.date}</div>
-                  <div style={{ fontSize: 10.5, color: T.textMute, marginTop: 1 }}>{u.when}</div>
-                </div>
-                <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: T.text }}>{u.text}</div>
-              </button>
-            ))}
-          </Card>
-        </div>
-        <div>
-          <SectionLabel>Recent activity</SectionLabel>
-          <Card pad={0}>
-            {activity.map((a, i) => (
-              <button key={i} onClick={() => onSelectBuyer && onSelectBuyer(a.buyerId)} style={{
-                all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 14,
-                padding: '12px 18px', width: '100%', boxSizing: 'border-box',
-                borderBottom: i === activity.length - 1 ? 'none' : `1px solid ${T.border}`,
-              }}>
-                <span style={{ width: 56, flexShrink: 0, fontSize: 11, color: T.textMute, fontFamily: T.mono, marginTop: 2 }}>{a.ago}</span>
-                <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: T.text, lineHeight: 1.5 }}>{a.text}</span>
-              </button>
-            ))}
-          </Card>
-        </div>
-      </div>
+      <SectionLabel>Upcoming (next 30 days)</SectionLabel>
+      <Card pad={0} style={{ marginBottom: 28 }}>
+        {upcoming.map((u, i) => (
+          <button key={i} onClick={() => onSelectBuyer && onSelectBuyer(u.buyerId)} style={{
+            all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14,
+            padding: '12px 18px', width: '100%', boxSizing: 'border-box',
+            borderBottom: i === upcoming.length - 1 ? 'none' : `1px solid ${T.border}`,
+          }}>
+            <div style={{ width: 56, flexShrink: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.text, fontFamily: T.mono }}>{u.date}</div>
+              <div style={{ fontSize: 10.5, color: T.textMute, marginTop: 1 }}>{u.when}</div>
+            </div>
+            <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: T.text }}>{u.text}</div>
+          </button>
+        ))}
+      </Card>
+
+      <SectionLabel>Files</SectionLabel>
+      <Card pad={16}>
+        <a href={driveDealsUrl} target="_blank" rel="noopener noreferrer" style={{
+          all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, padding: '4px 0',
+        }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 9, flexShrink: 0,
+            background: 'rgba(55,217,168,0.1)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke={T.accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 5h5l2 2h7v9H3V5z"/>
+            </svg>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: T.text }}>Open Deals folder in Drive</div>
+            <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>Real Estate / Deals — buyer subfolders inside the year folder</div>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke={T.textMute} strokeWidth="1.5" style={{ flexShrink: 0 }}>
+            <path d="M5 3h6v6 M11 3l-7 7" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </a>
+      </Card>
     </div>
   );
 }
