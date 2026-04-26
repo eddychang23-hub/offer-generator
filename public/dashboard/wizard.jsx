@@ -56,7 +56,7 @@ function StepBuyer({ state, set }) {
   const [q, setQ] = React.useState('');
   const matches = q
     ? BUYERS.filter((b) =>
-        `${b.preferred} ${b.last} ${b.email}`.toLowerCase().includes(q.toLowerCase()))
+        `${displayName(b)} ${b.email || ''} ${b.legal || ''}`.toLowerCase().includes(q.toLowerCase()))
     : BUYERS.slice(0, 4);
 
   return (
@@ -87,9 +87,9 @@ function StepBuyer({ state, set }) {
                 background: sel ? 'rgba(55,217,168,0.06)' : T.surface,
               }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <Avatar name={b.preferred + ' ' + b.last}/>
+                <Avatar name={displayName(b)}/>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 650 }}>{b.preferred} {b.last}</div>
+                  <div style={{ fontSize: 15, fontWeight: 650 }}>{displayName(b)}</div>
                   <div style={{ fontSize: 12.5, color: T.textDim, marginTop: 2 }}>{b.email}</div>
                   <div style={{ fontSize: 11.5, color: T.textMute, marginTop: 3 }}>{b.activity}</div>
                 </div>
@@ -201,7 +201,7 @@ function BuyerCard({ idx, buyer, method, setMethod }) {
         }}>{idx}</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 650 }}>
-            {buyer.preferred && buyer.last ? `${buyer.preferred} ${buyer.last}` : 'New buyer'}
+            {displayName(buyer) || 'New buyer'}
           </div>
           {buyer.email && <div style={{ fontSize: 12, color: T.textDim, marginTop: 1 }}>{buyer.email}</div>}
         </div>
@@ -376,7 +376,7 @@ function StepReview({ state }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <ReviewBlock title="Buyers" icon="👥">
-        <div style={{ fontSize: 14, fontWeight: 600 }}>{buyer.preferred} {buyer.last}</div>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>{displayName(buyer)}</div>
         <div style={{ fontSize: 12.5, color: T.textDim, marginTop: 2 }}>{buyer.email}</div>
         {state.buyerCount === 2 && (
           <>

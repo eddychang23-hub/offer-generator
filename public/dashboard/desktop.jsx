@@ -20,7 +20,7 @@ function DesktopApp() {
   ];
   const visible = BUYERS
     .filter(filters.find((f) => f.key === filter).test)
-    .filter((b) => !q || `${b.preferred} ${b.last} ${b.email}`.toLowerCase().includes(q.toLowerCase()));
+    .filter((b) => !q || `${displayName(b)} ${b.email || ''} ${b.legal || ''}`.toLowerCase().includes(q.toLowerCase()));
 
   return (
     <div style={{
@@ -80,7 +80,7 @@ function DesktopApp() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, minWidth: 0 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flex: 1 }}>
-                    {b.preferred} {b.last}
+                    {displayName(b)}
                   </span>
                   <StatusBadge status={b.status} size="sm"/>
                 </div>
@@ -369,7 +369,7 @@ function Home({ onSelectBuyer, onStartNew, onNewBuyer }) {
 
   // Map buyer names → ids so tour rows can navigate to the right buyer
   const buyerIdByName = {};
-  safeBuyers.forEach((b) => { buyerIdByName[`${b.preferred} ${b.last}`] = b.id; });
+  safeBuyers.forEach((b) => { buyerIdByName[displayName(b)] = b.id; });
 
   // Drive — pull from defaults.json on the watcher side; here we hardcode the
   // Deals parent folder. Year auto-detection happens server-side eventually.
@@ -619,10 +619,10 @@ function DetailPane({ buyer: b, onWizard }) {
           background: 'oklch(0.32 0.05 200)', color: 'oklch(0.85 0.07 200)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 19, fontWeight: 700,
-        }}>{b.preferred[0]}{b.last[0]}</div>
+        }}>{avatarInitials(b)}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: -0.4 }}>{b.preferred} {b.last}</h2>
+            <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: -0.4 }}>{displayName(b)}</h2>
             <StatusBadge status={b.status}/>
           </div>
           <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 13, color: T.textDim, flexWrap: 'wrap' }}>
@@ -852,7 +852,7 @@ function DesktopStepBuyer({ onNewBuyer }) {
         {BUYERS.slice(0, 4).map((b) => (
           <Card key={b.id} onClick={() => setSel(b.id)} pad={14}
             style={{ borderColor: sel === b.id ? T.accent : T.border, background: sel === b.id ? 'rgba(55,217,168,0.06)' : T.surface }}>
-            <div style={{ fontSize: 14.5, fontWeight: 650 }}>{b.preferred} {b.last}</div>
+            <div style={{ fontSize: 14.5, fontWeight: 650 }}>{displayName(b)}</div>
             <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>{b.email}</div>
             <div style={{ fontSize: 11.5, color: T.textMute, marginTop: 6 }}>{b.activity}</div>
           </Card>

@@ -17,7 +17,7 @@ function BuyerDetail({ buyerId, onBack, onOpenDeal, onGenerate, onNewOffer }) {
   return (
     <Phone>
       <TopBar
-        title={`${b.preferred} ${b.last}`}
+        title={displayName(b)}
         sub={b.email}
         leading={<BackBtn onClick={onBack}/>}
         trailing={

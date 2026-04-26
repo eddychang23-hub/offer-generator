@@ -418,7 +418,27 @@ function ImgPlaceholder({ w, h, label, style }) {
   );
 }
 
+// Display helpers — used everywhere a buyer name is rendered. Falls back
+// to legal name if preferred + last are both empty (the New Buyer form
+// only requires legal name + email).
+function displayName(b) {
+  if (!b) return "";
+  const pref = (b.preferred || "").trim();
+  const last = (b.last || "").trim();
+  if (pref || last) return `${pref} ${last}`.trim();
+  return (b.legal || "").trim() || "(unnamed)";
+}
+
+function avatarInitials(b) {
+  const name = displayName(b);
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return ((parts[0][0] || "") + (parts[parts.length - 1][0] || "")).toUpperCase();
+  if (parts.length === 1) return (parts[0][0] || "").toUpperCase();
+  return "?";
+}
+
 Object.assign(window, {
   T, Phone, TopBar, BackBtn, StatusBadge, DocIcon, DOC_LABEL, Card, Btn, Chip,
   Input, Toggle, Check, RadioGroup, Section, DocStrip, StepRail, BottomBar, FAB, ImgPlaceholder,
+  displayName, avatarInitials,
 });

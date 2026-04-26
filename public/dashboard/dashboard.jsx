@@ -57,7 +57,7 @@ function Dashboard({ onOpenBuyer, onStartNew }) {
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: 18, fontWeight: 650, letterSpacing: -0.3, color: T.text }}>
-                  {b.preferred} {b.last}
+                  {displayName(b)}
                 </div>
                 {b.activeAddress ? (
                   <div style={{ fontSize: 13, color: T.textDim, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
