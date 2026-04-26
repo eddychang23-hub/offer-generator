@@ -343,6 +343,51 @@ function PickProperty({ buyerId, onDone }) {
 
   const [selected, setSelected] = React.useState(null);  // {tour, property}
   const [mlsFile, setMlsFile] = React.useState(null);
+  const [parsing, setParsing] = React.useState(false);
+  const [parsed, setParsed] = React.useState(null);   // parsed fields from /api/parse-mls
+  const [parseError, setParseError] = React.useState(null);
+
+  // Read a File as base64 (strip the "data:...;base64," prefix)
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result || '';
+        const idx = result.indexOf(',');
+        resolve(idx >= 0 ? result.slice(idx + 1) : result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleFileChange(e) {
+    const file = (e.target.files || [])[0];
+    if (!file) return;
+    setMlsFile(file);
+    setParsed(null);
+    setParseError(null);
+    setSelected(null);
+    setParsing(true);
+    try {
+      const b64 = await fileToBase64(file);
+      const res = await fetch('/api/parse-mls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdf_base64: b64 }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setParsed(json.parsed);
+      } else {
+        setParseError(json.error || 'Parse failed');
+      }
+    } catch (err) {
+      setParseError(err.message);
+    } finally {
+      setParsing(false);
+    }
+  }
 
   return (
     <div style={{ padding: "32px 40px 60px", maxWidth: 900, margin: "0 auto" }}>
@@ -410,27 +455,68 @@ function PickProperty({ buyerId, onDone }) {
       <SectionLabel>Or upload an MLS sheet</SectionLabel>
       <Card pad={20} style={{ marginBottom: 28 }}>
         <p style={{ margin: "0 0 12px", fontSize: 13, color: T.textDim, lineHeight: 1.5 }}>
-          For properties that weren't part of a tour. Same parsing pipeline as the
-          showing automation — extracts MLS, address, price, sellers, listing
-          brokerage, inclusions, exclusions.
+          For properties that weren't part of a tour. Same fields the showing
+          automation extracts — MLS, address, price, sellers, listing brokerage,
+          inclusions, exclusions. Claude reads the PDF directly.
         </p>
-        <input type="file" accept="application/pdf" onChange={(e) => setMlsFile(e.target.files[0] || null)}
+        <input type="file" accept="application/pdf" onChange={handleFileChange} disabled={parsing}
           style={{
             width: "100%", padding: 12,
             background: T.surface3, color: T.text,
             border: `1px dashed ${T.border2}`, borderRadius: 8,
             fontFamily: T.font, fontSize: 13,
           }}/>
-        {mlsFile && (
-          <div style={{ marginTop: 8, fontSize: 12, color: T.textMute }}>
-            Selected: {mlsFile.name} (parsing not yet wired)
+
+        {parsing && (
+          <div style={{ marginTop: 12, fontSize: 13, color: T.accent, display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 5, background: T.accent, animation: "pulse 1s infinite" }}/>
+            Parsing {mlsFile?.name}…
+          </div>
+        )}
+
+        {parseError && (
+          <div style={{ marginTop: 12, padding: "10px 12px", background: "rgba(230,107,107,0.12)", color: "#F0A5A5", borderRadius: 8, fontSize: 13 }}>
+            {parseError}
+          </div>
+        )}
+
+        {parsed && (
+          <div style={{ marginTop: 14, padding: "14px 16px", background: "rgba(55,217,168,0.07)", border: `1px solid rgba(55,217,168,0.25)`, borderRadius: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.accent, letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 10 }}>
+              Parsed
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 18px" }}>
+              {[
+                { label: 'MLS',         value: parsed.mls },
+                { label: 'Address',     value: `${parsed.street_num || ''} ${parsed.street || ''}`.trim() },
+                { label: 'City',        value: parsed.city },
+                { label: 'Postal',      value: parsed.zipcode },
+                { label: 'Price',       value: parsed.price ? `$${Number(parsed.price).toLocaleString()}` : '' },
+                { label: 'Beds / Baths',value: [parsed.beds, parsed.baths].filter(Boolean).join(' / ') },
+                { label: 'Sqft',        value: parsed.sqft },
+                { label: 'Year built',  value: parsed.year_built },
+                { label: 'Plan / Block / Lot', value: [parsed.plan, parsed.block, parsed.lot].filter(Boolean).join(' / ') },
+                { label: 'Sellers',     value: [parsed.seller1, parsed.seller2].filter(Boolean).join(', ') },
+                { label: 'Listing brokerage', value: parsed.listing_broker },
+                { label: 'Listing agent',     value: parsed.listing_agent },
+                { label: 'Agent phone',  value: parsed.listing_agent_ph },
+                { label: 'Agent email',  value: parsed.listing_agent_email },
+                { label: 'Inclusions',   value: parsed.inclusions, wide: true },
+                { label: 'Exclusions',   value: parsed.exclusions, wide: true },
+              ].filter(r => r.value).map(r => (
+                <div key={r.label} style={{ gridColumn: r.wide ? '1 / -1' : 'auto' }}>
+                  <div style={{ fontSize: 10.5, color: T.textMute, letterSpacing: 0.3, textTransform: 'uppercase', fontWeight: 600 }}>{r.label}</div>
+                  <div style={{ fontSize: 13, color: T.text, marginTop: 2 }}>{r.value}</div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </Card>
 
       <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
         <Btn variant="secondary" size="md" onClick={onDone}>Skip</Btn>
-        <Btn size="md" disabled={!selected && !mlsFile} onClick={onDone}>
+        <Btn size="md" disabled={!selected && !parsed} onClick={onDone}>
           Continue →
         </Btn>
       </div>
