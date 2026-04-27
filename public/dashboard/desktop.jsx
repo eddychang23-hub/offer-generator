@@ -408,64 +408,19 @@ function PickProperty({ buyerId, onDone }) {
             Pick a property
           </h1>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: T.textDim, lineHeight: 1.5 }}>
-            {buyer ? `For ${displayName(buyer)}.` : ""} Choose a recent tour property,
-            upload an MLS sheet, or skip and come back later.
+            {buyer ? `For ${displayName(buyer)}.` : ""} Upload an MLS sheet for the
+            property, or pick from a recent tour.
           </p>
         </div>
         <Btn variant="ghost" size="sm" onClick={onDone}>Skip for now →</Btn>
       </div>
 
-      <SectionLabel>From your tours</SectionLabel>
-      {safeTours.length === 0 ? (
-        <Card pad={20}>
-          <p style={{ margin: 0, color: T.textDim, fontSize: 13 }}>No tours yet.</p>
-        </Card>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
-          {safeTours.map(t => (
-            <Card key={t.id} pad={14}>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 650 }}>{t.date}</div>
-                  <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>
-                    {t.buyer} · {t.properties.length} {t.properties.length === 1 ? "property" : "properties"}
-                  </div>
-                </div>
-                {t.upcoming && (
-                  <span style={{ fontSize: 10, color: T.accent, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>
-                    Upcoming
-                  </span>
-                )}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {t.properties.map(p => {
-                  const isSel = selected && selected.tour === t.id && selected.property === p.mls;
-                  return (
-                    <button key={p.mls} onClick={() => setSelected({ tour: t.id, property: p.mls, addr: p.address })}
-                      style={{
-                        all: "unset", cursor: "pointer", padding: 12, borderRadius: 8,
-                        background: isSel ? "rgba(55,217,168,0.07)" : T.surface2,
-                        border: `1px solid ${isSel ? T.accent : T.border}`,
-                      }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>{p.address}</div>
-                      <div style={{ fontSize: 11.5, color: T.textDim, fontFamily: T.mono }}>
-                        {p.mls} · ${p.price?.toLocaleString()} · {p.beds}bd / {p.baths}ba
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      <SectionLabel>Or upload an MLS sheet</SectionLabel>
+      <SectionLabel>Upload MLS sheet</SectionLabel>
       <Card pad={20} style={{ marginBottom: 28 }}>
         <p style={{ margin: "0 0 12px", fontSize: 13, color: T.textDim, lineHeight: 1.5 }}>
-          For properties that weren't part of a tour. Same fields the showing
-          automation extracts — MLS, address, price, sellers, listing brokerage,
-          inclusions, exclusions. Claude reads the PDF directly.
+          For new buyers and properties that weren't part of a tour. Same fields
+          the showing automation extracts — MLS, address, price, sellers, listing
+          brokerage, inclusions, exclusions. Claude reads the PDF directly.
         </p>
         <input type="file" accept="application/pdf" onChange={handleFileChange} disabled={parsing}
           style={{
@@ -521,6 +476,51 @@ function PickProperty({ buyerId, onDone }) {
           </div>
         )}
       </Card>
+
+      <SectionLabel>Or pick from a recent tour</SectionLabel>
+      {safeTours.length === 0 ? (
+        <Card pad={20} style={{ marginBottom: 28 }}>
+          <p style={{ margin: 0, color: T.textDim, fontSize: 13 }}>No tours yet.</p>
+        </Card>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
+          {safeTours.map(t => (
+            <Card key={t.id} pad={14}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 650 }}>{t.date}</div>
+                  <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>
+                    {t.buyer} · {t.properties.length} {t.properties.length === 1 ? "property" : "properties"}
+                  </div>
+                </div>
+                {t.upcoming && (
+                  <span style={{ fontSize: 10, color: T.accent, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>
+                    Upcoming
+                  </span>
+                )}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {t.properties.map(p => {
+                  const isSel = selected && selected.tour === t.id && selected.property === p.mls;
+                  return (
+                    <button key={p.mls} onClick={() => setSelected({ tour: t.id, property: p.mls, addr: p.address })}
+                      style={{
+                        all: "unset", cursor: "pointer", padding: 12, borderRadius: 8,
+                        background: isSel ? "rgba(55,217,168,0.07)" : T.surface2,
+                        border: `1px solid ${isSel ? T.accent : T.border}`,
+                      }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>{p.address}</div>
+                      <div style={{ fontSize: 11.5, color: T.textDim, fontFamily: T.mono }}>
+                        {p.mls} · ${p.price?.toLocaleString()} · {p.beds}bd / {p.baths}ba
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
         <Btn variant="secondary" size="md" onClick={onDone}>Skip</Btn>
