@@ -125,28 +125,31 @@ function StatusBadge({ status, size = 'md' }) {
 // Click-to-edit version of StatusBadge. Looks identical but opens a menu of
 // the workflow stages on click. Parent decides what onChange(next) does
 // (typically PATCH /api/buyers + mutate window.BUYERS for sidebar refresh).
-function StatusPicker({ value, onChange, disabled }) {
+function StatusPicker({ value, onChange, disabled, size = 'md' }) {
   const [open, setOpen] = React.useState(false);
   const c = STATUS_COLOR[value] || STATUS_COLOR['Showings Only'];
+  const small = size === 'sm';
 
   return (
-    <span style={{ position: 'relative', display: 'inline-block' }}>
+    <span
+      style={{ position: 'relative', display: 'inline-block' }}
+      onClick={(e) => e.stopPropagation()}>
       <button
-        onClick={() => !disabled && setOpen((o) => !o)}
+        onClick={(e) => { e.stopPropagation(); if (!disabled) setOpen((o) => !o); }}
         disabled={disabled}
         style={{
           all: 'unset',
           cursor: disabled ? 'default' : 'pointer',
-          display: 'inline-flex', alignItems: 'center', gap: 6,
+          display: 'inline-flex', alignItems: 'center', gap: small ? 5 : 6,
           background: c.bg, color: c.fg,
-          borderRadius: 999, padding: '4px 10px',
-          fontSize: 12, fontWeight: 600, letterSpacing: 0.1,
+          borderRadius: 999, padding: small ? '3px 8px' : '4px 10px',
+          fontSize: small ? 11 : 12, fontWeight: 600, letterSpacing: 0.1,
           whiteSpace: 'nowrap',
         }}>
-        <span style={{ width: 6, height: 6, borderRadius: 3, background: c.dot }} />
+        <span style={{ width: small ? 5 : 6, height: small ? 5 : 6, borderRadius: 3, background: c.dot }} />
         {value}
         {!disabled && (
-          <svg width="9" height="9" viewBox="0 0 9 9" style={{ marginLeft: 2, opacity: 0.7 }}>
+          <svg width={small ? 8 : 9} height={small ? 8 : 9} viewBox="0 0 9 9" style={{ marginLeft: 1, opacity: 0.7 }}>
             <path d="M2 3.5l2.5 2.5l2.5-2.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         )}
@@ -155,7 +158,7 @@ function StatusPicker({ value, onChange, disabled }) {
         <>
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 100 }}/>
           <div style={{
-            position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+            position: 'absolute', top: 'calc(100% + 6px)', right: 0,
             background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10,
             padding: 4, minWidth: 180, zIndex: 101,
             boxShadow: '0 8px 24px rgba(0,0,0,0.32)',

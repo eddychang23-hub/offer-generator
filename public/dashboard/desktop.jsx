@@ -21,6 +21,30 @@ function clearDraft(buyerId) {
   sessionStorage.removeItem('bf:draft:' + buyerId);
 }
 
+// Persist a status change for the buyer to the Sheets back end. Mutates
+// window.BUYERS in place so any subsequent render picks up the new badge.
+// Returns true on success, false on failure (caller decides how to revert).
+async function patchBuyerStatus(buyerId, next) {
+  const list = Array.isArray(window.BUYERS) ? window.BUYERS : [];
+  const target = list.find((x) => x.id === buyerId);
+  const prev = target ? target.status : undefined;
+  if (target) target.status = next;
+  try {
+    const res = await fetch('/api/buyers', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ buyer_id: buyerId, status: next }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error || 'PATCH failed');
+    return true;
+  } catch (err) {
+    if (target) target.status = prev;
+    alert('Status save failed: ' + err.message);
+    return false;
+  }
+}
+
 function DesktopApp() {
   // Source of truth for navigation is window.location.hash. State mirrors
   // it so React re-renders. Browser back/forward fires hashchange, which
@@ -48,6 +72,13 @@ function DesktopApp() {
 
   const [filter, setFilter] = React.useState('All');
   const [q, setQ] = React.useState('');
+  // Bumped after any status change to force re-render of children that
+  // read window.BUYERS directly (the sidebar list, the detail header).
+  const [statusBump, setStatusBump] = React.useState(0);
+  const onStatusChange = async (buyerId, next) => {
+    const ok = await patchBuyerStatus(buyerId, next);
+    if (ok) setStatusBump((n) => n + 1);
+  };
 
   const filters = [
     { key: 'All',           test: () => true },
@@ -106,8 +137,11 @@ function DesktopApp() {
           {visible.map((b) => {
             const active = route.name === 'detail' && route.id === b.id;
             return (
-              <button key={b.id} onClick={() => navigate('#/buyer/' + b.id)} style={{
-                all: 'unset', cursor: 'pointer', display: 'block', width: '100%',
+              <div key={b.id} role="button" tabIndex={0}
+                onClick={() => navigate('#/buyer/' + b.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('#/buyer/' + b.id); } }}
+                style={{
+                cursor: 'pointer', display: 'block', width: '100%',
                 padding: '9px 10px', borderRadius: 10, marginBottom: 2,
                 background: active ? 'rgba(55,217,168,0.08)' : 'transparent',
                 border: `1px solid ${active ? 'rgba(55,217,168,0.25)' : 'transparent'}`,
@@ -120,7 +154,7 @@ function DesktopApp() {
                   <span style={{ fontSize: 13, fontWeight: 600, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flex: 1 }}>
                     {displayName(b)}
                   </span>
-                  <StatusBadge status={b.status} size="sm"/>
+                  <StatusPicker value={b.status} size="sm" onChange={(next) => onStatusChange(b.id, next)}/>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 3, gap: 8, minWidth: 0 }}>
                   <span style={{ fontSize: 11.5, color: T.textDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flex: 1 }}>
@@ -131,7 +165,7 @@ function DesktopApp() {
                 <div style={{ marginTop: 6 }}>
                   <DocStrip docs={b.docs} compact/>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -188,7 +222,7 @@ function DesktopApp() {
             onNewBuyer={() => navigate('#/newbuyer')}
           />
         ) : (
-          <DetailPane buyer={BUYERS.find((b) => b.id === route.id) || BUYERS[0]} onWizard={() => navigate('#/wizard')}/>
+          <DetailPane buyer={BUYERS.find((b) => b.id === route.id) || BUYERS[0]} onWizard={() => navigate('#/wizard')} onStatusChange={onStatusChange}/>
         )}
       </main>
     </div>
@@ -1182,45 +1216,11 @@ const FORM_KEY_BY_KIND = {
   waiver:  'notice_waiver',
 };
 
-function DetailPane({ buyer: b, onWizard }) {
+function DetailPane({ buyer: b, onWizard, onStatusChange }) {
   const fullAddr = `${b.addr.num} ${b.addr.street}, ${b.addr.city}, ${b.addr.state} ${b.addr.zip}`;
   // Track which doc kinds are currently being requested so we can show
   // a "Requesting…" state on the corresponding button.
   const [pending, setPending] = React.useState({});
-
-  // Local mirror of b.status so the picker can show the change immediately
-  // while the PATCH is in flight. Resyncs if the parent passes a different
-  // buyer (navigation between buyers).
-  const [statusLocal, setStatusLocal] = React.useState(b.status);
-  React.useEffect(() => { setStatusLocal(b.status); }, [b.id]);
-
-  const handleStatusChange = async (next) => {
-    const prev = statusLocal;
-    setStatusLocal(next);
-    // Mutate window.BUYERS so the sidebar list re-renders with the new badge
-    // on its next render. Done before the PATCH so the UI feels instant.
-    if (Array.isArray(window.BUYERS)) {
-      const target = window.BUYERS.find((x) => x.id === b.id);
-      if (target) target.status = next;
-    }
-    try {
-      const res = await fetch('/api/buyers', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ buyer_id: b.id, status: next }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error || 'PATCH failed');
-    } catch (err) {
-      // Revert on failure
-      setStatusLocal(prev);
-      if (Array.isArray(window.BUYERS)) {
-        const target = window.BUYERS.find((x) => x.id === b.id);
-        if (target) target.status = prev;
-      }
-      alert('Status save failed: ' + err.message);
-    }
-  };
 
   const requestGenerate = async (kind) => {
     const form_key = FORM_KEY_BY_KIND[kind];
@@ -1275,7 +1275,7 @@ function DetailPane({ buyer: b, onWizard }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: -0.4 }}>{displayName(b)}</h2>
-            <StatusPicker value={statusLocal} onChange={handleStatusChange}/>
+            <StatusPicker value={b.status} onChange={(next) => onStatusChange(b.id, next)}/>
           </div>
           <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 13, color: T.textDim, flexWrap: 'wrap' }}>
             <span>{b.email}</span>
