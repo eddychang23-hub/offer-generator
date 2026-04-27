@@ -136,6 +136,12 @@ function DesktopApp() {
     .filter(filters.find((f) => f.key === filter).test)
     .filter((b) => !q || `${displayName(b)} ${b.email || ''} ${b.legal || ''}`.toLowerCase().includes(q.toLowerCase()));
 
+  // Hide the buyer list during the wizard flow — those screens are deep-
+  // focus tasks, the sidebar is just clutter and steals horizontal space
+  // (especially the InputsStep with its side-by-side MLS preview).
+  const wizardRoutes = new Set(['newbuyer', 'pickproperty', 'paperwork', 'inputs', 'send', 'wizard']);
+  const hideSidebar = view === 'home' || wizardRoutes.has(route.name);
+
   return (
     <div style={{
       width: '100%', height: '100%',
@@ -143,14 +149,14 @@ function DesktopApp() {
       fontFamily: T.font, fontSize: 14, lineHeight: 1.45,
       WebkitFontSmoothing: 'antialiased',
       display: 'grid',
-      gridTemplateColumns: view === 'home' ? '64px 1fr' : '64px 360px 1fr',
+      gridTemplateColumns: hideSidebar ? '64px 1fr' : '64px 360px 1fr',
       overflow: 'hidden',
     }}>
       {/* Rail — global nav */}
       <Rail view={view} onSelect={(v) => navigate(v === 'home' ? '#/home' : '#/buyer/' + (BUYERS[0]?.id || ''))}/>
 
-      {/* Sidebar — buyer list (hidden in 'home' view) */}
-      {view === 'buyers' ? (
+      {/* Sidebar — buyer list (hidden in 'home' view + during wizard steps) */}
+      {!hideSidebar ? (
       <aside style={{
         background: '#0F1216',
         borderRight: `1px solid ${T.border}`,
@@ -759,11 +765,12 @@ function InputsStep({ buyerId, onContinue, onBack }) {
   }, [pdfBase64]);
   const previewSrc = blobUrl || (pdfDriveId ? `https://drive.google.com/file/d/${pdfDriveId}/preview` : '');
 
-  // Side-by-side layout kicks in at a width that comfortably fits the form
-  // (~700) and the PDF panel (~480) plus padding.
-  const [isWide, setIsWide] = React.useState(() => typeof window !== 'undefined' && window.innerWidth >= 1280);
+  // Side-by-side layout kicks in at a width that comfortably fits both
+  // panes 50/50. With the sidebar hidden during the wizard the form gets
+  // the full main area, so we can drop the breakpoint.
+  const [isWide, setIsWide] = React.useState(() => typeof window !== 'undefined' && window.innerWidth >= 1100);
   React.useEffect(() => {
-    const onResize = () => setIsWide(window.innerWidth >= 1280);
+    const onResize = () => setIsWide(window.innerWidth >= 1100);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
@@ -854,13 +861,13 @@ function InputsStep({ buyerId, onContinue, onBack }) {
   return (
     <div style={{
       padding: "32px 40px 60px",
-      maxWidth: showPreview ? 1400 : 760,
+      maxWidth: showPreview ? 1800 : 760,
       margin: "0 auto",
       display: showPreview ? 'flex' : 'block',
       gap: 24,
       alignItems: 'flex-start',
     }}>
-    <div style={{ flex: showPreview ? '1 1 700px' : 'auto', minWidth: 0 }}>
+    <div style={{ flex: showPreview ? '1 1 0' : 'auto', minWidth: 0 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: "uppercase" }}>Step 4</div>
@@ -1118,7 +1125,8 @@ function InputsStep({ buyerId, onContinue, onBack }) {
 
     {showPreview && (
       <aside style={{
-        flex: '0 0 480px',
+        flex: '1 1 0',
+        minWidth: 0,
         position: 'sticky',
         top: 24,
         alignSelf: 'flex-start',
