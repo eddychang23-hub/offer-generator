@@ -1188,6 +1188,40 @@ function DetailPane({ buyer: b, onWizard }) {
   // a "Requesting…" state on the corresponding button.
   const [pending, setPending] = React.useState({});
 
+  // Local mirror of b.status so the picker can show the change immediately
+  // while the PATCH is in flight. Resyncs if the parent passes a different
+  // buyer (navigation between buyers).
+  const [statusLocal, setStatusLocal] = React.useState(b.status);
+  React.useEffect(() => { setStatusLocal(b.status); }, [b.id]);
+
+  const handleStatusChange = async (next) => {
+    const prev = statusLocal;
+    setStatusLocal(next);
+    // Mutate window.BUYERS so the sidebar list re-renders with the new badge
+    // on its next render. Done before the PATCH so the UI feels instant.
+    if (Array.isArray(window.BUYERS)) {
+      const target = window.BUYERS.find((x) => x.id === b.id);
+      if (target) target.status = next;
+    }
+    try {
+      const res = await fetch('/api/buyers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ buyer_id: b.id, status: next }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'PATCH failed');
+    } catch (err) {
+      // Revert on failure
+      setStatusLocal(prev);
+      if (Array.isArray(window.BUYERS)) {
+        const target = window.BUYERS.find((x) => x.id === b.id);
+        if (target) target.status = prev;
+      }
+      alert('Status save failed: ' + err.message);
+    }
+  };
+
   const requestGenerate = async (kind) => {
     const form_key = FORM_KEY_BY_KIND[kind];
     if (!form_key) {
@@ -1241,7 +1275,7 @@ function DetailPane({ buyer: b, onWizard }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: -0.4 }}>{displayName(b)}</h2>
-            <StatusBadge status={b.status}/>
+            <StatusPicker value={statusLocal} onChange={handleStatusChange}/>
           </div>
           <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 13, color: T.textDim, flexWrap: 'wrap' }}>
             <span>{b.email}</span>

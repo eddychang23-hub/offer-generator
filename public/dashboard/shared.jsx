@@ -122,6 +122,71 @@ function StatusBadge({ status, size = 'md' }) {
   );
 }
 
+// Click-to-edit version of StatusBadge. Looks identical but opens a menu of
+// the workflow stages on click. Parent decides what onChange(next) does
+// (typically PATCH /api/buyers + mutate window.BUYERS for sidebar refresh).
+function StatusPicker({ value, onChange, disabled }) {
+  const [open, setOpen] = React.useState(false);
+  const c = STATUS_COLOR[value] || STATUS_COLOR['Showings Only'];
+
+  return (
+    <span style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        onClick={() => !disabled && setOpen((o) => !o)}
+        disabled={disabled}
+        style={{
+          all: 'unset',
+          cursor: disabled ? 'default' : 'pointer',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: c.bg, color: c.fg,
+          borderRadius: 999, padding: '4px 10px',
+          fontSize: 12, fontWeight: 600, letterSpacing: 0.1,
+          whiteSpace: 'nowrap',
+        }}>
+        <span style={{ width: 6, height: 6, borderRadius: 3, background: c.dot }} />
+        {value}
+        {!disabled && (
+          <svg width="9" height="9" viewBox="0 0 9 9" style={{ marginLeft: 2, opacity: 0.7 }}>
+            <path d="M2 3.5l2.5 2.5l2.5-2.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 100 }}/>
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+            background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10,
+            padding: 4, minWidth: 180, zIndex: 101,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.32)',
+          }}>
+            {STATUS_OPTIONS.map((opt) => {
+              const oc = STATUS_COLOR[opt];
+              const sel = opt === value;
+              return (
+                <button key={opt} onClick={() => { setOpen(false); if (opt !== value) onChange?.(opt); }} style={{
+                  all: 'unset', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  width: '100%', boxSizing: 'border-box',
+                  padding: '8px 10px', borderRadius: 7,
+                  fontSize: 13, fontWeight: sel ? 650 : 500, color: T.text,
+                  background: sel ? 'rgba(255,255,255,0.04)' : 'transparent',
+                }}
+                  onMouseEnter={(e) => !sel && (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+                  onMouseLeave={(e) => !sel && (e.currentTarget.style.background = 'transparent')}>
+                  <span style={{ width: 7, height: 7, borderRadius: 4, background: oc.dot }}/>
+                  <span style={{ flex: 1 }}>{opt}</span>
+                  {sel && <svg width="11" height="11" viewBox="0 0 11 11"><path d="M2 5.5l2.5 2.5l5-5" stroke={T.accent} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </span>
+  );
+}
+
 // Document icon — outlined when not generated, filled when generated
 function DocIcon({ kind, on = false, size = 22 }) {
   const stroke = on ? T.accent : 'rgba(255,255,255,0.32)';
