@@ -3,11 +3,27 @@
 // Input, Toggle, Check, RadioGroup, Section, fmtDate) from shared.jsx + buyer-detail.jsx.
 
 function DesktopApp() {
-  // Top-level view: 'home' (overview) | 'buyers' (list + detail).
-  // Step 1 of the rebuild — both currently render the buyer layout;
-  // a dedicated Home component arrives in step 2.
-  const [view, setView] = React.useState('buyers');
-  const [route, setRoute] = React.useState({ name: 'detail', id: 'eddy-chang' });
+  // Source of truth for navigation is window.location.hash. State mirrors
+  // it so React re-renders. Browser back/forward fires hashchange, which
+  // re-parses the hash. All navigation calls navigate(hash).
+  const parseHash = () => {
+    const h = (window.location.hash || '').replace(/^#\/?/, '');
+    const parts = h.split('/').filter(Boolean);
+    if (parts[0] === 'home')         return { view: 'home',   route: { name: 'detail', id: 'eddy-chang' } };
+    if (parts[0] === 'newbuyer')     return { view: 'buyers', route: { name: 'newbuyer' } };
+    if (parts[0] === 'pickproperty') return { view: 'buyers', route: { name: 'pickproperty', id: parts[1] || '' } };
+    if (parts[0] === 'wizard')       return { view: 'buyers', route: { name: 'wizard' } };
+    if (parts[0] === 'buyer')        return { view: 'buyers', route: { name: 'detail', id: parts[1] || 'eddy-chang' } };
+    return { view: 'buyers', route: { name: 'detail', id: 'eddy-chang' } };
+  };
+  const [{ view, route }, setNav] = React.useState(parseHash);
+  React.useEffect(() => {
+    const onHash = () => setNav(parseHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  const navigate = (hash) => { window.location.hash = hash; };
+
   const [filter, setFilter] = React.useState('All');
   const [q, setQ] = React.useState('');
 
@@ -33,7 +49,7 @@ function DesktopApp() {
       overflow: 'hidden',
     }}>
       {/* Rail — global nav */}
-      <Rail view={view} onSelect={setView}/>
+      <Rail view={view} onSelect={(v) => navigate(v === 'home' ? '#/home' : '#/buyer/' + (BUYERS[0]?.id || ''))}/>
 
       {/* Sidebar — buyer list (hidden in 'home' view) */}
       {view === 'buyers' ? (
@@ -68,7 +84,7 @@ function DesktopApp() {
           {visible.map((b) => {
             const active = route.name === 'detail' && route.id === b.id;
             return (
-              <button key={b.id} onClick={() => setRoute({ name: 'detail', id: b.id })} style={{
+              <button key={b.id} onClick={() => navigate('#/buyer/' + b.id)} style={{
                 all: 'unset', cursor: 'pointer', display: 'block', width: '100%',
                 padding: '9px 10px', borderRadius: 10, marginBottom: 2,
                 background: active ? 'rgba(55,217,168,0.08)' : 'transparent',
@@ -99,7 +115,7 @@ function DesktopApp() {
         </div>
 
         <div style={{ padding: '12px 18px 18px', borderTop: `1px solid ${T.border}` }}>
-          <Btn full size="md" onClick={() => setRoute({ name: 'wizard' })} leading={
+          <Btn full size="md" onClick={() => navigate('#/wizard')} leading={
             <svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 2v10 M2 7h10" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/></svg>
           }>
             Start New Paperwork
@@ -112,27 +128,27 @@ function DesktopApp() {
       <main style={{ overflowY: 'auto', minHeight: 0 }}>
         {view === 'home' ? (
           <Home
-            onSelectBuyer={(id) => { setView('buyers'); setRoute({ name: 'detail', id }); }}
-            onStartNew={() => { setView('buyers'); setRoute({ name: 'wizard' }); }}
-            onNewBuyer={() => { setView('buyers'); setRoute({ name: 'newbuyer' }); }}
+            onSelectBuyer={(id) => navigate('#/buyer/' + id)}
+            onStartNew={() => navigate('#/wizard')}
+            onNewBuyer={() => navigate('#/newbuyer')}
           />
         ) : route.name === 'newbuyer' ? (
           <NewBuyer
-            onCancel={() => setRoute({ name: 'detail', id: BUYERS[0]?.id || '' })}
-            onSaved={(buyer_id) => setRoute({ name: 'pickproperty', id: buyer_id })}
+            onCancel={() => navigate('#/buyer/' + (BUYERS[0]?.id || ''))}
+            onSaved={(buyer_id) => navigate('#/pickproperty/' + buyer_id)}
           />
         ) : route.name === 'pickproperty' ? (
           <PickProperty
             buyerId={route.id}
-            onDone={() => { window.location.hash = ''; window.location.reload(); }}
+            onDone={() => navigate('#/buyer/' + route.id)}
           />
         ) : route.name === 'wizard' ? (
           <WizardPane
-            onClose={() => setRoute({ name: 'detail', id: BUYERS[0]?.id || '' })}
-            onNewBuyer={() => setRoute({ name: 'newbuyer' })}
+            onClose={() => navigate('#/buyer/' + (BUYERS[0]?.id || ''))}
+            onNewBuyer={() => navigate('#/newbuyer')}
           />
         ) : (
-          <DetailPane buyer={BUYERS.find((b) => b.id === route.id) || BUYERS[0]} onWizard={() => setRoute({ name: 'wizard' })}/>
+          <DetailPane buyer={BUYERS.find((b) => b.id === route.id) || BUYERS[0]} onWizard={() => navigate('#/wizard')}/>
         )}
       </main>
     </div>
