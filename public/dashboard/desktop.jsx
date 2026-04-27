@@ -208,7 +208,7 @@ function Rail({ view, onSelect }) {
 // to the buyer detail page where the agent can generate paperwork.
 function NewBuyer({ onCancel, onSaved }) {
   const [s, setS] = React.useState({
-    preferred_name: "", last_name: "", legal_name: "",
+    preferred_name: "", legal_name: "",
     email: "", dob: "", occupation: "",
     street_num: "", street: "", city: "", state: "AB", zipcode: "",
     id_document_type: "Driver's Licence",
@@ -218,35 +218,30 @@ function NewBuyer({ onCancel, onSaved }) {
   const [error, setError] = React.useState(null);
   const set = (k, v) => setS((o) => ({ ...o, [k]: v }));
 
-  // Auto-generated agreement number — buyer initials + MMYY (e.g. EC-0426
-  // for "Eddy Chang", MS-0426 for "Michael Smith"). Splits legal_name on
-  // whitespace; uses first letter of the first word + first letter of the
-  // last word. preferred_name and last_name take precedence when filled.
+  // Last name is derived from legal name's last word — used by the back end
+  // for folder naming. Preferred name is first-name-only by convention, so we
+  // don't ask for last name as a separate field.
+  const derivedLastName = React.useMemo(() => {
+    const parts = (s.legal_name || "").trim().split(/\s+/).filter(Boolean);
+    return parts.length >= 2 ? parts[parts.length - 1] : "";
+  }, [s.legal_name]);
+
+  // Auto-generated agreement number — buyer initials + MMYY. First initial
+  // comes from preferred name (or legal name's first word). Last initial
+  // comes from legal name's last word, only if there are 2+ words so single-
+  // word names don't get the letter doubled.
   const agreementNumber = React.useMemo(() => {
-    const legal = (s.legal_name || "").trim();
-    const parts = legal.split(/\s+/).filter(Boolean);
-
-    // First initial: preferred_name → legal name's first word
-    const firstSrc = (s.preferred_name || "").trim() || (parts[0] || "");
+    const legalParts = (s.legal_name || "").trim().split(/\s+/).filter(Boolean);
+    const firstSrc = (s.preferred_name || "").trim() || (legalParts[0] || "");
     const fi = firstSrc[0] || "";
-
-    // Last initial: last_name → legal name's last word (only if 2+ words,
-    // so single-word names don't get the letter doubled)
-    let li = "";
-    const lastTyped = (s.last_name || "").trim();
-    if (lastTyped) {
-      li = lastTyped[0] || "";
-    } else if (parts.length >= 2) {
-      li = parts[parts.length - 1][0] || "";
-    }
-
+    const li = legalParts.length >= 2 ? legalParts[legalParts.length - 1][0] : "";
     const initials = (fi + li).toUpperCase();
     if (!initials) return "";
     const now = new Date();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const yy = String(now.getFullYear() % 100).padStart(2, "0");
     return `${initials}-${mm}${yy}`;
-  }, [s.preferred_name, s.legal_name, s.last_name]);
+  }, [s.preferred_name, s.legal_name]);
 
   const canSubmit = s.legal_name.trim() && s.email.trim() && !submitting;
 
@@ -257,7 +252,7 @@ function NewBuyer({ onCancel, onSaved }) {
       const res = await fetch("/api/buyers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...s, agreement_number: agreementNumber }),
+        body: JSON.stringify({ ...s, last_name: derivedLastName, agreement_number: agreementNumber }),
       });
       const json = await res.json();
       if (json.success) {
@@ -290,12 +285,6 @@ function NewBuyer({ onCancel, onSaved }) {
       <Card pad={20} style={{ marginBottom: 18 }}>
         <SectionLabel>Identity</SectionLabel>
         <FieldGrid>
-          <Field label="Preferred name" hint="Optional — falls back to legal name">
-            <input type="text" value={s.preferred_name} onChange={(e) => set("preferred_name", e.target.value)} placeholder="Eddy" style={inputStyle}/>
-          </Field>
-          <Field label="Last name" hint="Optional — derived from legal name if blank">
-            <input type="text" value={s.last_name} onChange={(e) => set("last_name", e.target.value)} placeholder="Chang" style={inputStyle}/>
-          </Field>
           <Field label="Legal name * (full name on ID)" wide>
             <input type="text" value={s.legal_name} onChange={(e) => set("legal_name", e.target.value)} placeholder="Edward Chang" style={inputStyle}/>
           </Field>
@@ -304,6 +293,9 @@ function NewBuyer({ onCancel, onSaved }) {
           </Field>
           <Field label="Agreement number" hint="Auto-generated from initials + MM/YY">
             <input type="text" value={agreementNumber} readOnly style={{ ...inputStyle, opacity: 0.7 }}/>
+          </Field>
+          <Field label="Preferred name" hint="Optional — first name only. Falls back to legal name." wide>
+            <input type="text" value={s.preferred_name} onChange={(e) => set("preferred_name", e.target.value)} placeholder="Eddy" style={inputStyle}/>
           </Field>
         </FieldGrid>
       </Card>
