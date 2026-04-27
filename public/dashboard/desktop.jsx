@@ -15,7 +15,23 @@ function getDraft(buyerId) {
 }
 function setDraft(buyerId, patch) {
   const cur = getDraft(buyerId);
-  sessionStorage.setItem('bf:draft:' + buyerId, JSON.stringify({ ...cur, ...patch }));
+  const merged = { ...cur, ...patch };
+  try {
+    sessionStorage.setItem('bf:draft:' + buyerId, JSON.stringify(merged));
+  } catch (err) {
+    // Likely QuotaExceededError on a large MLS PDF base64. Drop the PDF
+    // and retry — the rest of the draft (parsed fields, paperwork choices,
+    // form inputs) is way more important than the PDF preview.
+    console.warn('Draft save hit storage limit, dropping pdf_base64:', err);
+    if (merged.property && merged.property.pdf_base64) {
+      delete merged.property.pdf_base64;
+      try {
+        sessionStorage.setItem('bf:draft:' + buyerId, JSON.stringify(merged));
+      } catch (err2) {
+        console.error('Draft save failed even without PDF:', err2);
+      }
+    }
+  }
 }
 function clearDraft(buyerId) {
   sessionStorage.removeItem('bf:draft:' + buyerId);
@@ -454,6 +470,7 @@ function PickProperty({ buyerId, onContinue, onSkip }) {
 
   const [selected, setSelected] = React.useState(null);  // tour-property object
   const [mlsFile, setMlsFile] = React.useState(null);
+  const [mlsBase64, setMlsBase64] = React.useState(null);  // raw PDF kept so InputsStep can preview it
   const [parsing, setParsing] = React.useState(false);
   const [parsed, setParsed] = React.useState(null);   // parsed fields from /api/parse-mls
   const [parseError, setParseError] = React.useState(null);
@@ -461,7 +478,7 @@ function PickProperty({ buyerId, onContinue, onSkip }) {
   const handleContinue = () => {
     if (parsed) {
       const address = `${parsed.street_num || ''} ${parsed.street || ''}`.trim();
-      onContinue && onContinue({ source: 'mls', address, ...parsed });
+      onContinue && onContinue({ source: 'mls', address, pdf_base64: mlsBase64, ...parsed });
     } else if (selected) {
       onContinue && onContinue({ source: 'tour', ...selected });
     }
@@ -485,12 +502,14 @@ function PickProperty({ buyerId, onContinue, onSkip }) {
     const file = (e.target.files || [])[0];
     if (!file) return;
     setMlsFile(file);
+    setMlsBase64(null);
     setParsed(null);
     setParseError(null);
     setSelected(null);
     setParsing(true);
     try {
       const b64 = await fileToBase64(file);
+      setMlsBase64(b64);
       const res = await fetch('/api/parse-mls', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -716,6 +735,40 @@ function InputsStep({ buyerId, onContinue, onBack }) {
   const property = draft.property || {};
   const paperwork = draft.paperwork || { crg: false, bra: false };
 
+  // Build the MLS PDF preview source. Uploaded MLS → base64 from session
+  // draft → Blob URL. Tour MLS → drive_file_id from the showing → Drive's
+  // built-in preview iframe URL (no API auth needed; user's browser session
+  // handles it).
+  const pdfBase64 = property.pdf_base64 || '';
+  const pdfDriveId = property.drive_file_id || '';
+  const [blobUrl, setBlobUrl] = React.useState(null);
+  React.useEffect(() => {
+    if (!pdfBase64) { setBlobUrl(null); return; }
+    let url = null;
+    try {
+      const bytes = atob(pdfBase64);
+      const arr = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+      const blob = new Blob([arr], { type: 'application/pdf' });
+      url = URL.createObjectURL(blob);
+      setBlobUrl(url);
+    } catch (err) {
+      console.warn('PDF blob URL build failed:', err);
+    }
+    return () => { if (url) URL.revokeObjectURL(url); };
+  }, [pdfBase64]);
+  const previewSrc = blobUrl || (pdfDriveId ? `https://drive.google.com/file/d/${pdfDriveId}/preview` : '');
+
+  // Side-by-side layout kicks in at a width that comfortably fits the form
+  // (~700) and the PDF panel (~480) plus padding.
+  const [isWide, setIsWide] = React.useState(() => typeof window !== 'undefined' && window.innerWidth >= 1280);
+  React.useEffect(() => {
+    const onResize = () => setIsWide(window.innerWidth >= 1280);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const showPreview = isWide && !!previewSrc;
+
   const [values, setValues] = React.useState(() => {
     const today = new Date().toISOString().slice(0, 10);
     const sixMonths = new Date();
@@ -799,7 +852,15 @@ function InputsStep({ buyerId, onContinue, onBack }) {
   const anyBuyerCondition = isYes('financing') || isYes('inspection') || isYes('buyer_sale') || isYes('additional_condition');
 
   return (
-    <div style={{ padding: "32px 40px 60px", maxWidth: 760, margin: "0 auto" }}>
+    <div style={{
+      padding: "32px 40px 60px",
+      maxWidth: showPreview ? 1400 : 760,
+      margin: "0 auto",
+      display: showPreview ? 'flex' : 'block',
+      gap: 24,
+      alignItems: 'flex-start',
+    }}>
+    <div style={{ flex: showPreview ? '1 1 700px' : 'auto', minWidth: 0 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: "uppercase" }}>Step 4</div>
@@ -807,6 +868,9 @@ function InputsStep({ buyerId, onContinue, onBack }) {
           <p style={{ margin: "6px 0 0", fontSize: 13, color: T.textDim, lineHeight: 1.5 }}>
             {buyer ? `For ${displayName(buyer)}` : ''}{property.address ? ` · ${property.address}` : ''}.
             Property and brokerage fields are pre-filled from the MLS parse.
+            {!isWide && previewSrc && (
+              <> · <a href={previewSrc} target="_blank" rel="noopener noreferrer" style={{ color: T.accent }}>View MLS PDF</a></>
+            )}
           </p>
         </div>
         <Btn variant="ghost" size="sm" onClick={onBack}>← Back</Btn>
@@ -1050,6 +1114,35 @@ function InputsStep({ buyerId, onContinue, onBack }) {
         <Btn variant="secondary" size="md" onClick={onBack}>Back</Btn>
         <Btn size="md" onClick={() => onContinue && onContinue(values)}>Continue →</Btn>
       </div>
+    </div>{/* end form column */}
+
+    {showPreview && (
+      <aside style={{
+        flex: '0 0 480px',
+        position: 'sticky',
+        top: 24,
+        alignSelf: 'flex-start',
+      }}>
+        <Card pad={12} style={{ overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: 'uppercase' }}>
+              MLS Sheet
+            </div>
+            <a href={previewSrc} target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: 11, color: T.accent, textDecoration: 'none' }}>
+              Open in new tab ↗
+            </a>
+          </div>
+          <iframe src={previewSrc}
+            title="MLS PDF preview"
+            style={{
+              width: '100%',
+              height: 'calc(100vh - 130px)',
+              border: 'none', borderRadius: 8, background: '#fff',
+            }}/>
+        </Card>
+      </aside>
+    )}
     </div>
   );
 }
