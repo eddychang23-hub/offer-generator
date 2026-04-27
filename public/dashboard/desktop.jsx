@@ -32,6 +32,7 @@ function DesktopApp() {
     if (parts[0] === 'newbuyer')     return { view: 'buyers', route: { name: 'newbuyer' } };
     if (parts[0] === 'pickproperty') return { view: 'buyers', route: { name: 'pickproperty', id: parts[1] || '' } };
     if (parts[0] === 'paperwork')    return { view: 'buyers', route: { name: 'paperwork',    id: parts[1] || '' } };
+    if (parts[0] === 'inputs')       return { view: 'buyers', route: { name: 'inputs',       id: parts[1] || '' } };
     if (parts[0] === 'wizard')       return { view: 'buyers', route: { name: 'wizard' } };
     if (parts[0] === 'buyer')        return { view: 'buyers', route: { name: 'detail', id: parts[1] || 'eddy-chang' } };
     return { view: 'buyers', route: { name: 'detail', id: 'eddy-chang' } };
@@ -168,6 +169,12 @@ function DesktopApp() {
             buyerId={route.id}
             onContinue={(paperwork) => { setDraft(route.id, { paperwork }); navigate('#/inputs/' + route.id); }}
             onBack={() => navigate('#/pickproperty/' + route.id)}
+          />
+        ) : route.name === 'inputs' ? (
+          <InputsStep
+            buyerId={route.id}
+            onContinue={(inputs) => { setDraft(route.id, { inputs }); navigate('#/send/' + route.id); }}
+            onBack={() => navigate('#/paperwork/' + route.id)}
           />
         ) : route.name === 'wizard' ? (
           <WizardPane
@@ -618,6 +625,155 @@ function PickPaperwork({ buyerId, onContinue, onBack }) {
         <Btn size="md" onClick={handleContinue}>Continue →</Btn>
       </div>
     </div>
+  );
+}
+
+// ─── Form inputs (schema-driven, Step 4) ──────────────────────
+// Fetches the canonical field schema and renders only the fields the agent
+// actually needs to fill in for this deal. Filtering rules:
+//   - source must be "intake" or "offers_tab" (everything else comes from
+//     the MLS upload, the buyer record, or downstream forms)
+//   - scope must be in the included set: offer + deposit always; engagement
+//     only when BRA is being generated; waiver/buyer/property excluded
+//     (waiver is post-acceptance, buyer is already collected, property
+//     comes from the MLS parse)
+// Defaults from the schema seed on first render. Values autosave to the
+// per-buyer draft so back/forward navigation doesn't lose work.
+function InputsStep({ buyerId, onContinue, onBack }) {
+  const buyer = (Array.isArray(BUYERS) ? BUYERS : []).find(b => b.id === buyerId);
+  const draft = getDraft(buyerId);
+  const property = draft.property || {};
+  const paperwork = draft.paperwork || { crg: false, bra: false };
+
+  const [schema, setSchema] = React.useState(null);
+  const [schemaError, setSchemaError] = React.useState(null);
+  const [values, setValues] = React.useState(draft.inputs || {});
+
+  React.useEffect(() => {
+    fetch('/dashboard/field_schema.json')
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(setSchema)
+      .catch(err => setSchemaError(err.message));
+  }, []);
+
+  // Seed schema defaults once the schema arrives. Doesn't overwrite anything
+  // the agent (or a previous draft) already filled in.
+  React.useEffect(() => {
+    if (!schema) return;
+    setValues(prev => {
+      const next = { ...prev };
+      for (const [key, def] of Object.entries(schema.fields)) {
+        if (next[key] !== undefined && next[key] !== '') continue;
+        if (def.default === 'today') {
+          next[key] = new Date().toISOString().slice(0, 10);
+        } else if (def.default !== undefined) {
+          next[key] = def.default;
+        }
+      }
+      return next;
+    });
+  }, [schema]);
+
+  // Autosave on any change — survives back/forward.
+  React.useEffect(() => {
+    setDraft(buyerId, { inputs: values });
+  }, [values, buyerId]);
+
+  if (schemaError) {
+    return (
+      <div style={{ padding: 40, maxWidth: 760, margin: "0 auto" }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Couldn't load schema</h1>
+        <p style={{ color: '#F0A5A5', fontSize: 13 }}>{schemaError}</p>
+        <p style={{ color: T.textDim, fontSize: 12, marginTop: 12 }}>
+          Expected at /dashboard/field_schema.json — make sure it's deployed.
+        </p>
+        <Btn variant="secondary" size="md" onClick={onBack} style={{ marginTop: 20 }}>← Back</Btn>
+      </div>
+    );
+  }
+  if (!schema) {
+    return <div style={{ padding: 40, color: T.textMute, textAlign: 'center' }}>Loading…</div>;
+  }
+
+  const includedScopes = new Set(['offer', 'deposit']);
+  if (paperwork.bra) includedScopes.add('engagement');
+
+  // Filter + group by scope.
+  const byScope = {};
+  for (const [key, def] of Object.entries(schema.fields)) {
+    if (def.derived) continue;
+    if (def.source !== 'intake' && def.source !== 'offers_tab') continue;
+    if (!includedScopes.has(def.scope)) continue;
+    (byScope[def.scope] = byScope[def.scope] || []).push([key, def]);
+  }
+
+  const scopeOrder = ['engagement', 'offer', 'deposit'];
+  const scopeLabels = {
+    offer: 'Offer terms',
+    deposit: 'Deposit',
+    engagement: 'Buyer Representation Agreement',
+  };
+
+  const setField = (k, v) => setValues(o => ({ ...o, [k]: v }));
+
+  return (
+    <div style={{ padding: "32px 40px 60px", maxWidth: 760, margin: "0 auto" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: "uppercase" }}>Step 4</div>
+          <h1 style={{ margin: "4px 0 0", fontSize: 26, fontWeight: 700, letterSpacing: -0.5 }}>Fill in the details</h1>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: T.textDim, lineHeight: 1.5 }}>
+            {buyer ? `For ${displayName(buyer)}` : ''}{property.address ? ` · ${property.address}` : ''}.
+            Defaults are already applied — change only what's different for this deal.
+          </p>
+        </div>
+        <Btn variant="ghost" size="sm" onClick={onBack}>← Back</Btn>
+      </div>
+
+      {scopeOrder.filter(s => byScope[s]).map(scope => (
+        <Card key={scope} pad={20} style={{ marginBottom: 18 }}>
+          <SectionLabel>{scopeLabels[scope] || scope}</SectionLabel>
+          <FieldGrid>
+            {byScope[scope].map(([key, def]) => (
+              <SchemaField key={key} def={def} value={values[key] ?? ''} onChange={(v) => setField(key, v)}/>
+            ))}
+          </FieldGrid>
+        </Card>
+      ))}
+
+      <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+        <Btn variant="secondary" size="md" onClick={onBack}>Back</Btn>
+        <Btn size="md" onClick={() => onContinue && onContinue(values)}>Continue →</Btn>
+      </div>
+    </div>
+  );
+}
+
+// Renders a single schema field with the right input control. Wide for
+// fields that benefit from full row width (long text labels, search criteria).
+function SchemaField({ def, value, onChange }) {
+  const label = def.label + (def.optional ? ' (optional)' : '');
+  const wide = def.input_type === 'text' && /criteria|address|inclusions|exclusions|comments|notes|terms/i.test(def.label);
+
+  if (def.input_type === 'select') {
+    return (
+      <Field label={label} wide={wide}>
+        <select value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}>
+          <option value="">—</option>
+          {(def.options || []).map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      </Field>
+    );
+  }
+
+  const t = def.input_type;
+  const htmlType =
+    t === 'tel' || t === 'email' || t === 'date' || t === 'time' || t === 'number'
+      ? t : 'text';
+  return (
+    <Field label={label} wide={wide}>
+      <input type={htmlType} value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}/>
+    </Field>
   );
 }
 

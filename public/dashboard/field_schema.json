@@ -1,0 +1,507 @@
+{
+  "_comment": "Canonical field schema for buyer-file automation. 'fields' = unique canonical fields across all forms, grouped by scope. 'forms' = per-form mapping from canonical field to PDF field name(s), with optional transforms. Static brokerage values live in defaults.json (keyed by PDF field name). The filler combines defaults.json (always) + this schema's per-form mappings (per-deal data). Fields with a 'derived' block are computed from other canonical fields at fill time.",
+
+  "fields": {
+    "buyer1_preferred_name":  { "scope": "buyer",      "label": "Buyer 1 Preferred Name",   "input_type": "text", "source": "intake", "_comment": "Used for folder names + draft emails — not on any paperwork." },
+    "buyer1_last_name":       { "scope": "buyer",      "label": "Buyer 1 Last Name",        "input_type": "text", "source": "intake", "_comment": "Used for folder name in 1-buyer case. 2-buyer case uses preferred names only." },
+    "buyer1_legal_name":      { "scope": "buyer",      "label": "Buyer 1 Legal Name",       "input_type": "text", "source": "intake_or_id_parse" },
+    "buyer1_dob":             { "scope": "buyer",      "label": "Buyer 1 DOB",              "input_type": "date", "source": "id_parse_editable" },
+    "buyer1_occupation":      { "scope": "buyer",      "label": "Buyer 1 Occupation",       "input_type": "text", "source": "intake" },
+    "buyer1_street_num":      { "scope": "buyer",      "label": "Buyer 1 Street #",         "input_type": "text", "source": "id_parse_editable" },
+    "buyer1_street":          { "scope": "buyer",      "label": "Buyer 1 Street Name",      "input_type": "text", "source": "id_parse_editable" },
+    "buyer1_city":            { "scope": "buyer",      "label": "Buyer 1 City",             "input_type": "text", "source": "id_parse_editable" },
+    "buyer1_state":           { "scope": "buyer",      "label": "Buyer 1 Province",         "input_type": "text", "source": "id_parse_editable" },
+    "buyer1_zipcode":         { "scope": "buyer",      "label": "Buyer 1 Postal Code",      "input_type": "text", "source": "id_parse_editable" },
+    "buyer1_phone":           { "scope": "buyer",      "label": "Buyer 1 Phone",            "input_type": "tel",  "source": "intake" },
+    "buyer1_email":           { "scope": "buyer",      "label": "Buyer 1 Email",            "input_type": "email","source": "showings_or_intake" },
+    "buyer1_id_document_type":      { "scope": "buyer", "label": "Buyer 1 ID Type",            "input_type": "text", "source": "intake", "default": "Driver's Licence" },
+    "buyer1_id_number":             { "scope": "buyer", "label": "Buyer 1 ID Number",          "input_type": "text", "source": "id_parse_editable" },
+    "buyer1_id_issuing_jurisdiction": { "scope": "buyer", "label": "Buyer 1 ID Issuing Province", "input_type": "text", "source": "id_parse_editable" },
+    "buyer1_id_expiry_date":        { "scope": "buyer", "label": "Buyer 1 ID Expiry",          "input_type": "date", "source": "id_parse_editable" },
+    "buyer1_address_line_1":  { "scope": "buyer", "label": "Buyer 1 Address Line 1", "derived": { "from": ["buyer1_street_num", "buyer1_street"], "format": "{} {}" } },
+    "buyer1_address_line_2":  { "scope": "buyer", "label": "Buyer 1 Address Line 2", "derived": { "from": ["buyer1_city", "buyer1_state", "buyer1_zipcode"], "format": "{}, {} {}" } },
+
+    "buyer2_preferred_name":  { "scope": "buyer",      "label": "Buyer 2 Preferred Name",   "input_type": "text", "source": "intake", "optional": true },
+    "buyer2_last_name":       { "scope": "buyer",      "label": "Buyer 2 Last Name",        "input_type": "text", "source": "intake", "optional": true },
+    "buyer2_legal_name":      { "scope": "buyer",      "label": "Buyer 2 Legal Name",       "input_type": "text", "source": "intake_or_id_parse", "optional": true },
+    "buyer2_dob":             { "scope": "buyer",      "label": "Buyer 2 DOB",              "input_type": "date", "source": "id_parse_editable", "optional": true },
+    "buyer2_occupation":      { "scope": "buyer",      "label": "Buyer 2 Occupation",       "input_type": "text", "source": "intake", "optional": true },
+    "buyer2_street_num":      { "scope": "buyer",      "label": "Buyer 2 Street #",         "input_type": "text", "source": "id_parse_editable", "optional": true },
+    "buyer2_street":          { "scope": "buyer",      "label": "Buyer 2 Street Name",      "input_type": "text", "source": "id_parse_editable", "optional": true },
+    "buyer2_city":            { "scope": "buyer",      "label": "Buyer 2 City",             "input_type": "text", "source": "id_parse_editable", "optional": true },
+    "buyer2_state":           { "scope": "buyer",      "label": "Buyer 2 Province",         "input_type": "text", "source": "id_parse_editable", "optional": true },
+    "buyer2_zipcode":         { "scope": "buyer",      "label": "Buyer 2 Postal Code",      "input_type": "text", "source": "id_parse_editable", "optional": true },
+    "buyer2_phone":           { "scope": "buyer",      "label": "Buyer 2 Phone",            "input_type": "tel",  "source": "intake", "optional": true },
+    "buyer2_email":           { "scope": "buyer",      "label": "Buyer 2 Email",            "input_type": "email","source": "intake", "optional": true },
+    "buyer2_id_document_type":      { "scope": "buyer", "label": "Buyer 2 ID Type",            "input_type": "text", "source": "intake", "default": "Driver's Licence", "optional": true },
+    "buyer2_id_number":             { "scope": "buyer", "label": "Buyer 2 ID Number",          "input_type": "text", "source": "id_parse_editable", "optional": true },
+    "buyer2_id_issuing_jurisdiction": { "scope": "buyer", "label": "Buyer 2 ID Issuing Province", "input_type": "text", "source": "id_parse_editable", "optional": true },
+    "buyer2_id_expiry_date":        { "scope": "buyer", "label": "Buyer 2 ID Expiry",          "input_type": "date", "source": "id_parse_editable", "optional": true },
+    "buyer2_address_line_1":  { "scope": "buyer", "label": "Buyer 2 Address Line 1", "derived": { "from": ["buyer2_street_num", "buyer2_street"], "format": "{} {}" }, "optional": true },
+    "buyer2_address_line_2":  { "scope": "buyer", "label": "Buyer 2 Address Line 2", "derived": { "from": ["buyer2_city", "buyer2_state", "buyer2_zipcode"], "format": "{}, {} {}" }, "optional": true },
+
+    "property_street_num":    { "scope": "property",   "label": "Property Street #",        "input_type": "text", "source": "showings_or_intake", "optional": true },
+    "property_street":        { "scope": "property",   "label": "Property Street Name",     "input_type": "text", "source": "showings_or_intake", "optional": true },
+    "property_unit_number":   { "scope": "property",   "label": "Property Unit #",          "input_type": "text", "source": "showings_or_intake", "optional": true },
+    "property_city":          { "scope": "property",   "label": "Property City",            "input_type": "text", "source": "showings_or_intake", "optional": true },
+    "property_province":      { "scope": "property",   "label": "Property Province",        "input_type": "text", "source": "showings_or_intake", "default": "AB", "optional": true },
+    "property_zipcode":       { "scope": "property",   "label": "Property Postal Code",     "input_type": "text", "source": "showings_or_intake", "optional": true },
+
+    "engagement_date":        { "scope": "engagement", "label": "Signing Date",             "input_type": "date", "source": "intake", "default": "today" },
+    "agreement_start_date":   { "scope": "engagement", "label": "Agreement Start Date",     "input_type": "date", "source": "intake", "default": "today" },
+    "agreement_expiry_date":  { "scope": "engagement", "label": "Agreement Expiry Date",    "input_type": "date", "source": "intake" },
+    "agreement_number":       { "scope": "engagement", "label": "Agreement Number",         "input_type": "text", "source": "auto_generated_editable", "format": "[INITIALS]-[MMYY]" },
+
+    "search_criteria_property_type": { "scope": "engagement", "label": "Property Type",     "input_type": "text", "source": "intake" },
+    "search_criteria_market_area":   { "scope": "engagement", "label": "Market Area(s)",    "input_type": "text", "source": "intake" },
+
+    "deposit_amount":         { "scope": "deposit", "label": "Deposit Amount",       "input_type": "number", "source": "offers_tab" },
+    "deposit_currency":       { "scope": "deposit", "label": "Currency",             "input_type": "text",   "source": "intake", "default": "CAD" },
+    "deposit_date":           { "scope": "deposit", "label": "Date of Receipt",      "input_type": "date",   "source": "offers_tab" },
+    "deposit_funds_type":     { "scope": "deposit", "label": "Type of Funds Received","input_type": "select", "source": "intake",
+                                "options": ["Cheque", "Certified Cheque", "Cash", "Bank Draft", "e-transfer", "Wire Transfer", "Other"], "default": "Bank Draft" },
+    "deposit_method":         { "scope": "deposit", "label": "Method of Receipt",    "input_type": "select", "source": "intake",
+                                "options": ["in person", "mail", "electronically", "Other"], "default": "in person" },
+    "deposit_purpose":        { "scope": "deposit", "label": "Purpose of Funds",     "input_type": "text",   "source": "intake", "default": "Deposit for purchase." },
+
+    "deposit_account_number": { "scope": "deposit", "label": "Account Number",       "input_type": "text",   "source": "intake", "optional": true },
+    "deposit_account_holder": { "scope": "deposit", "label": "Account Holder Name",  "input_type": "text",   "source": "intake", "optional": true },
+    "deposit_account_type":   { "scope": "deposit", "label": "Account Type",         "input_type": "select", "source": "intake",
+                                "options": ["Chequing", "Saving", "Trust", "Other"], "optional": true },
+
+    "funds_provider_buyer_index": { "scope": "deposit", "label": "Funds Provider (which buyer)", "input_type": "select",
+                                    "source": "intake", "options": ["1", "2"], "default": "1",
+                                    "_comment": "UI dropdown to copy buyer 1 or buyer 2 info into Section D.1. Filler resolves *_legal_name/_dob/_address/etc by reading buyer{N}_*." },
+
+    "purchase_price":           { "scope": "offer",   "label": "Purchase Price",         "input_type": "number", "source": "offers_tab" },
+    "listed_price":             { "scope": "property","label": "Listed Price",           "input_type": "number", "source": "showings_or_intake" },
+    "additional_deposit_amount":{ "scope": "offer",   "label": "Additional Deposit",     "input_type": "number", "source": "intake", "optional": true },
+    "binding_date":             { "scope": "offer",   "label": "Legally Binding Date",   "input_type": "date",   "source": "intake" },
+    "condition_removal_date":   { "scope": "offer",   "label": "Condition Removal Date", "input_type": "date",   "source": "offers_tab" },
+    "possession_date":          { "scope": "offer",   "label": "Possession Date",        "input_type": "date",   "source": "offers_tab" },
+
+    "deal_is_conditional":      { "scope": "offer", "label": "Conditional?", "input_type": "select", "source": "intake", "options": ["Yes", "No"] },
+    "deal_is_firm":             { "scope": "offer", "label": "Firm?",        "input_type": "select", "source": "intake", "options": ["Yes", "No"] },
+    "deal_is_new_home":         { "scope": "offer", "label": "New Home?",    "input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "No" },
+    "deal_based_on_net_gst":    { "scope": "offer", "label": "Based on Net GST?", "input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "No" },
+
+    "total_commission":         { "scope": "offer", "label": "Total Commission",        "input_type": "text", "source": "intake", "optional": true },
+    "listing_commission_pct":   { "scope": "offer", "label": "Listing Side Commission", "input_type": "text", "source": "intake", "optional": true },
+    "buying_commission_pct":    { "scope": "offer", "label": "Buying Side Commission",  "input_type": "text", "source": "intake", "default": "3.5/1.5" },
+    "commission_comments":      { "scope": "offer", "label": "Commission Notes",        "input_type": "text", "source": "intake", "optional": true },
+    "source_of_business":       { "scope": "offer", "label": "Source of Business",      "input_type": "text", "source": "intake" },
+
+    "seller1":                  { "scope": "property", "label": "Seller 1 Name", "input_type": "text", "source": "showings_or_intake" },
+    "seller2":                  { "scope": "property", "label": "Seller 2 Name", "input_type": "text", "source": "showings_or_intake", "optional": true },
+
+    "property_plan":            { "scope": "property", "label": "Plan",  "input_type": "text", "source": "showings_or_intake", "optional": true },
+    "property_block":           { "scope": "property", "label": "Block", "input_type": "text", "source": "showings_or_intake", "optional": true },
+    "property_lot":             { "scope": "property", "label": "Lot",   "input_type": "text", "source": "showings_or_intake", "optional": true },
+    "property_mls":             { "scope": "property", "label": "MLS",   "input_type": "text", "source": "showings_or_intake" },
+
+    "listing_brokerage":        { "scope": "property", "label": "Listing Brokerage",     "input_type": "text", "source": "showings_tab" },
+    "listing_agent":            { "scope": "property", "label": "Listing Agent",         "input_type": "text", "source": "showings_tab" },
+    "listing_agent_phone":      { "scope": "property", "label": "Listing Agent Phone",   "input_type": "tel",  "source": "showings_tab" },
+
+    "buyer_lawyer_name":        { "scope": "offer", "label": "Buyer Lawyer Name",   "input_type": "text", "source": "intake", "optional": true },
+    "buyer_lawyer_firm":        { "scope": "offer", "label": "Buyer Lawyer Firm",   "input_type": "text", "source": "intake", "optional": true },
+    "buyer_lawyer_address":     { "scope": "offer", "label": "Buyer Lawyer Address","input_type": "text", "source": "intake", "optional": true },
+    "buyer_lawyer_city":        { "scope": "offer", "label": "Buyer Lawyer City",   "input_type": "text", "source": "intake", "optional": true },
+    "buyer_lawyer_state":       { "scope": "offer", "label": "Buyer Lawyer Province","input_type": "text","source": "intake", "optional": true },
+    "buyer_lawyer_zipcode":     { "scope": "offer", "label": "Buyer Lawyer Postal", "input_type": "text", "source": "intake", "optional": true },
+    "buyer_lawyer_phone":       { "scope": "offer", "label": "Buyer Lawyer Phone",  "input_type": "tel",  "source": "intake", "optional": true },
+    "buyer_lawyer_email":       { "scope": "offer", "label": "Buyer Lawyer Email",  "input_type": "email","source": "intake", "optional": true },
+
+    "referral_brokerage":       { "scope": "offer", "label": "Referral Brokerage",  "input_type": "text", "source": "intake", "optional": true },
+    "referral_agent":           { "scope": "offer", "label": "Referral Agent",      "input_type": "text", "source": "intake", "optional": true },
+    "referral_address":         { "scope": "offer", "label": "Referral Address",    "input_type": "text", "source": "intake", "optional": true },
+    "referral_city":            { "scope": "offer", "label": "Referral City",       "input_type": "text", "source": "intake", "optional": true },
+    "referral_state":           { "scope": "offer", "label": "Referral Province",   "input_type": "text", "source": "intake", "optional": true },
+    "referral_zipcode":         { "scope": "offer", "label": "Referral Postal",     "input_type": "text", "source": "intake", "optional": true },
+    "referral_phone":           { "scope": "offer", "label": "Referral Phone",      "input_type": "tel",  "source": "intake", "optional": true },
+    "referral_fax":             { "scope": "offer", "label": "Referral Fax",        "input_type": "tel",  "source": "intake", "optional": true },
+    "referral_amount":          { "scope": "offer", "label": "Referral Amount",     "input_type": "text", "source": "intake", "optional": true },
+
+    "closing_date":             { "scope": "offer", "label": "Closing Date",         "input_type": "date", "source": "offers_tab" },
+    "closing_docs":             { "scope": "offer", "label": "Closing Docs Provided By", "input_type": "select", "source": "intake", "options": ["seller's", "buyer's"], "default": "seller's" },
+    "trustee":                  { "scope": "offer", "label": "Deposit Trustee",      "input_type": "text", "source": "intake", "optional": true },
+    "deposit_time":             { "scope": "offer", "label": "Deposit Due Time",     "input_type": "time", "source": "intake", "optional": true },
+    "condition_time":           { "scope": "offer", "label": "Condition Removal Time","input_type": "time", "source": "intake", "optional": true },
+    "has_financing":            { "scope": "offer", "label": "Financing Condition?", "input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "No" },
+    "has_inspection":           { "scope": "offer", "label": "Inspection Condition?","input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "No" },
+    "has_buyer_sale":           { "scope": "offer", "label": "Buyer's Sale Condition?","input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "No" },
+    "has_additional_condition": { "scope": "offer", "label": "Additional Condition?","input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "No" },
+
+    "seller_condition":         { "scope": "offer", "label": "Seller Has Condition?","input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "No" },
+    "seller_condition_text":    { "scope": "offer", "label": "Seller Condition Text","input_type": "text", "source": "intake", "optional": true },
+    "seller_condition_date":    { "scope": "offer", "label": "Seller Condition Date","input_type": "date", "source": "intake", "optional": true },
+    "seller_condition_time":    { "scope": "offer", "label": "Seller Condition Time","input_type": "time", "source": "intake", "optional": true },
+
+    "dower":                    { "scope": "offer", "label": "Dower Required?",      "input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "No" },
+    "dower_date":               { "scope": "offer", "label": "Dower Sign Date",      "input_type": "date", "source": "intake", "optional": true },
+    "dower_time":               { "scope": "offer", "label": "Dower Sign Time",      "input_type": "time", "source": "intake", "optional": true },
+
+    "term_title_insurance":     { "scope": "offer", "label": "Title Insurance Term?","input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "No" },
+    "title_insurance_max":      { "scope": "offer", "label": "Title Insurance Max $","input_type": "text", "source": "intake", "optional": true },
+    "term_cleaning":            { "scope": "offer", "label": "Cleaning Term?",       "input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "No" },
+    "term_walkthrough":         { "scope": "offer", "label": "Walkthrough Term?",    "input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "No" },
+    "additional_terms":         { "scope": "offer", "label": "Additional Terms",     "input_type": "text", "source": "intake", "optional": true },
+
+    "has_expiry":               { "scope": "offer", "label": "Offer Has Expiry?",    "input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "Yes" },
+    "expiry_date":              { "scope": "offer", "label": "Offer Expiry Date",    "input_type": "date", "source": "intake", "optional": true },
+    "expiry_time":              { "scope": "offer", "label": "Offer Expiry Time",    "input_type": "time", "source": "intake", "optional": true },
+
+    "inclusions":               { "scope": "property", "label": "Inclusions",        "input_type": "text", "source": "showings_tab", "optional": true },
+    "exclusions":               { "scope": "property", "label": "Exclusions",        "input_type": "text", "source": "showings_tab", "optional": true },
+
+    "contract_number":          { "scope": "offer", "label": "Contract Number", "input_type": "text", "source": "offers_tab" },
+    "additional_condition_text":{ "scope": "offer", "label": "Additional Condition Text", "input_type": "text", "source": "offers_tab", "optional": true },
+
+    "waiver_party":             { "scope": "waiver", "label": "Who is Waiving",        "input_type": "select", "source": "intake", "options": ["buyer", "seller"], "default": "buyer" },
+    "waiver_signing_date":      { "scope": "waiver", "label": "Waiver Signing Date",   "input_type": "date",   "source": "intake", "default": "today" },
+    "waiver_signing_time":      { "scope": "waiver", "label": "Waiver Signing Time",   "input_type": "text",   "source": "intake", "default": "9:00" },
+    "waiver_signing_ampm":      { "scope": "waiver", "label": "AM/PM",                  "input_type": "select", "source": "intake", "options": ["AM", "PM"], "default": "AM" },
+    "waiver_includes_financing":           { "scope": "waiver", "label": "Waive Financing Condition?",    "input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "No" },
+    "waiver_includes_inspection":          { "scope": "waiver", "label": "Waive Inspection Condition?",   "input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "No" },
+    "waiver_includes_buyer_sale":          { "scope": "waiver", "label": "Waive Buyer's Sale Condition?", "input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "No" },
+    "waiver_includes_additional_condition":{ "scope": "waiver", "label": "Waive Additional Condition?",   "input_type": "select", "source": "intake", "options": ["Yes", "No"], "default": "No" }
+  },
+
+  "forms": {
+    "consumer_relationships_guide": {
+      "pdf": "Offer Automation/Fillable Forms/Consumer Relationships Guide.pdf",
+      "display_name": "Consumer Relationships Guide",
+      "mappings": [
+        { "canonical": "engagement_date", "pdf_field": "txtSignedDate_m",  "transform": "month_name" },
+        { "canonical": "engagement_date", "pdf_field": "txtSignedDate_d",  "transform": "day_2digit" },
+        { "canonical": "engagement_date", "pdf_field": "txtSignedDate_yy", "transform": "year_2digit" },
+        { "canonical": "buyer1_legal_name", "pdf_field": "txtConsumer1Sig" },
+        { "canonical": "buyer2_legal_name", "pdf_field": "txtConsumer2Sig" }
+      ]
+    },
+
+    "buyer_representation_agreement": {
+      "pdf": "Offer Automation/Fillable Forms/Exclusive Buyer Representation Agreement (Designated Agency).pdf",
+      "display_name": "Exclusive Buyer Representation Agreement (Designated Agency)",
+      "mappings": [
+        { "canonical": "buyer1_legal_name", "pdf_field": "txtbuyersig1" },
+        { "canonical": "buyer2_legal_name", "pdf_field": "txtbuyersig2" },
+
+        { "canonical": "buyer1_street_num", "pdf_field": "txtb_streetnum" },
+        { "canonical": "buyer1_street",     "pdf_field": "txtb_street" },
+        { "canonical": "buyer1_city",       "pdf_field": "txtb_city" },
+        { "canonical": "buyer1_state",      "pdf_field": "txtb_state" },
+        { "canonical": "buyer1_zipcode",    "pdf_field": "txtb_zipcode" },
+        { "canonical": "buyer1_phone",      "pdf_field": "txtb_phone1" },
+        { "canonical": "buyer1_email",      "pdf_field": "txtb_email" },
+
+        { "canonical": "buyer2_street_num", "pdf_field": "txtb2_streetnum" },
+        { "canonical": "buyer2_street",     "pdf_field": "txtb2_street" },
+        { "canonical": "buyer2_city",       "pdf_field": "txtb2_city" },
+        { "canonical": "buyer2_state",      "pdf_field": "txtb2_state" },
+        { "canonical": "buyer2_zipcode",    "pdf_field": "txtb2_zipcode" },
+        { "canonical": "buyer2_phone",      "pdf_field": "txtb2_phone1" },
+        { "canonical": "buyer2_email",      "pdf_field": "txtb2_email" },
+
+        { "canonical": "search_criteria_property_type", "pdf_field": "txtPropType" },
+        { "canonical": "search_criteria_market_area",   "pdf_field": "txtMarketArea" },
+
+        { "canonical": "agreement_start_date",  "pdf_field": "txtp_ContractDateABC_m",  "transform": "month_name" },
+        { "canonical": "agreement_start_date",  "pdf_field": "txtp_ContractDateABC_d",  "transform": "day_2digit" },
+        { "canonical": "agreement_start_date",  "pdf_field": "txtp_ContractDateABC_yy", "transform": "year_2digit" },
+
+        { "canonical": "agreement_expiry_date", "pdf_field": "txtp_expiredate_mmmm", "transform": "month_name" },
+        { "canonical": "agreement_expiry_date", "pdf_field": "txtp_expiredate_dd",   "transform": "day_2digit" },
+        { "canonical": "agreement_expiry_date", "pdf_field": "txtp_expiredate_yy",   "transform": "year_2digit" },
+
+        { "canonical": "engagement_date", "pdf_field": "txtSignedDate_m",  "transform": "month_name" },
+        { "canonical": "engagement_date", "pdf_field": "txtSignedDate_d",  "transform": "day_2digit" },
+        { "canonical": "engagement_date", "pdf_field": "txtSignedDate_yy", "transform": "year_2digit" },
+
+        { "canonical": "agreement_number", "pdf_field": "txtagreementNum" }
+      ]
+    },
+
+    "fintrac_receipt_of_funds": {
+      "pdf": "Offer Automation/Fillable Forms/FINTRAC - Receipt Of Funds Record.pdf",
+      "display_name": "FINTRAC - Receipt of Funds Record",
+      "_comment": "Per-deal form (one per deposit). Receipt blocks 2 + 3 (suffix '2' / '3') stay blank — typical buyer file has one deposit. Section C.1 (brokerage account reference) blank. Section C.2 fills account #1 only. Section D.1 individual info pulls from buyer{N}_* where N = funds_provider_buyer_index.",
+      "mappings": [
+        { "canonical": "property_street_num",   "pdf_field": "txtp_streetnum" },
+        { "canonical": "property_street",       "pdf_field": "txtp_street" },
+        { "canonical": "property_unit_number",  "pdf_field": "txtp_unitNumber" },
+        { "canonical": "property_city",         "pdf_field": "txtp_city" },
+        { "canonical": "property_province",     "pdf_field": "txtProvince" },
+        { "canonical": "property_zipcode",      "pdf_field": "txtp_zipcode" },
+
+        { "canonical": "deposit_amount",   "pdf_field": "txtfundsReceived" },
+        { "canonical": "deposit_currency", "pdf_field": "txtfundsCurrency" },
+        { "canonical": "deposit_date",     "pdf_field": "txtfundsReceiptDated1_mmmm", "transform": "month_name" },
+        { "canonical": "deposit_date",     "pdf_field": "txtfundsReceiptDated1_d",    "transform": "day_2digit" },
+        { "canonical": "deposit_date",     "pdf_field": "txtfundsReceiptDated1_yyyy", "transform": "year_4digit" },
+        { "canonical": "deposit_purpose",  "pdf_field": "txtfundsPurpose" },
+
+        { "canonical": "deposit_funds_type", "select_to_field": {
+            "Cheque":           "chkOpt_TypesOfFundsReceived1",
+            "Certified Cheque": "chkOpt_TypesOfFundsReceived2",
+            "Cash":             "chkOpt_TypesOfFundsReceived3",
+            "Bank Draft":       "chkOpt_TypesOfFundsReceived4",
+            "e-transfer":       "chkOpt_TypesOfFundsReceived5",
+            "Wire Transfer":    "chkOpt_TypesOfFundsReceived6",
+            "Other":            "chkOpt_TypesOfFundsReceived7"
+          }, "checked_value": "/1" },
+
+        { "canonical": "deposit_method", "select_to_field": {
+            "in person":      "chkOpt_Method1",
+            "mail":           "chkOpt_Method2",
+            "electronically": "chkOpt_Method3",
+            "Other":          "chkOpt_Method4"
+          }, "checked_value": "/1" },
+
+        { "canonical": "deposit_account_number", "pdf_field": "txtBillNumber" },
+        { "canonical": "deposit_account_holder", "pdf_field": "txtaccountHolder1" },
+        { "canonical": "deposit_account_type", "select_to_field": {
+            "Chequing": "chkOpt_accountType1",
+            "Saving":   "chkOpt_accountType1",
+            "Trust":    "chkOpt_accountType1",
+            "Other":    "chkOpt_accountType1"
+          }, "_comment": "chkOpt_accountType1 has 4 kid widgets — one per option. Filler sets parent /V to /1, /2, /3, or /4 depending on selected option (handled specially since this is a multi-state radio).",
+          "select_to_value": {
+            "Chequing": "/1",
+            "Saving":   "/2",
+            "Trust":    "/3",
+            "Other":    "/4"
+          } },
+
+        { "canonical": "buyer1_legal_name",                "pdf_field": "txtDLNameIndividual" },
+        { "canonical": "buyer1_address_line_1",            "pdf_field": "txtIndividualAdd" },
+        { "canonical": "buyer1_address_line_2",            "pdf_field": "txtIndividualAdd2" },
+        { "canonical": "buyer1_dob",                       "pdf_field": "txtDOBD1_mmmm", "transform": "month_name" },
+        { "canonical": "buyer1_dob",                       "pdf_field": "txtDOBD1_d",    "transform": "day_2digit" },
+        { "canonical": "buyer1_dob",                       "pdf_field": "txtDOBD1_yyyy", "transform": "year_4digit" },
+        { "canonical": "buyer1_occupation",                "pdf_field": "txtthirdPartyBusinessOccupation1" },
+        { "canonical": "engagement_date",                  "pdf_field": "txtInfoVerifyDate_mmmm", "transform": "month_name" },
+        { "canonical": "engagement_date",                  "pdf_field": "txtInfoVerifyDate_d",    "transform": "day_2digit" },
+        { "canonical": "engagement_date",                  "pdf_field": "txtInfoVerifyDate_yyyy", "transform": "year_4digit" },
+        { "canonical": "buyer1_id_number",                 "pdf_field": "txtdocIdentifierNumber" },
+        { "canonical": "buyer1_id_issuing_jurisdiction",   "pdf_field": "txtissuingJurisdiction" },
+        { "canonical": "buyer1_id_expiry_date",            "pdf_field": "txtDocExpDate", "transform": "date_long" },
+
+        { "canonical": "buyer1_id_document_type", "select_to_field": {
+            "Driver's Licence": "chkOpt_TypeID",
+            "Passport":         "chkOpt_TypeID",
+            "Other":            "chkOpt_TypeID"
+          }, "select_to_value": {
+            "Driver's Licence": "/1",
+            "Passport":         "/2",
+            "Other":            "/3"
+          } }
+      ]
+    },
+
+    "transaction_information": {
+      "pdf": "Offer Automation/Fillable Forms/Transaction Information.pdf",
+      "display_name": "Royal LePage Noralta Transaction Information",
+      "_comment": "Brokerage submission cover sheet. Most fields auto-fill from existing data. Per-deal inputs: deal_is_conditional/firm, binding_date, commission %s, source_of_business. Optional: lawyer info, referral info, additional deposit. Top-of-page checkboxes (MLS/Deposit/Receipt/BRA/Fintrac/etc) all left blank per agent.",
+      "mappings": [
+        { "canonical": "property_street_num",   "pdf_field": "txtp_streetnum" },
+        { "canonical": "property_street",       "pdf_field": "txtp_street" },
+        { "canonical": "property_unit_number",  "pdf_field": "txtp_unitNumber" },
+        { "canonical": "property_city",         "pdf_field": "txtp_city" },
+        { "canonical": "property_province",     "pdf_field": "txtp_state" },
+        { "canonical": "property_zipcode",      "pdf_field": "txtp_zipcode" },
+        { "canonical": "property_plan",         "pdf_field": "txtPlan" },
+        { "canonical": "property_block",        "pdf_field": "txtp_Block" },
+        { "canonical": "property_lot",          "pdf_field": "txtp_LotNumber" },
+        { "canonical": "property_mls",          "pdf_field": "txtmlsnumber" },
+
+        { "canonical": "purchase_price",            "pdf_field": "txtp_price" },
+        { "canonical": "listed_price",              "pdf_field": "txtp_listprice" },
+        { "canonical": "deposit_amount",            "pdf_field": "txtp_Deposit" },
+        { "canonical": "additional_deposit_amount", "pdf_field": "txtp_AdditionalDeposit" },
+
+        { "canonical": "condition_removal_date", "pdf_field": "txtConditionRemoveDate", "transform": "date_long" },
+        { "canonical": "possession_date",        "pdf_field": "txtp_PossessionDate",    "transform": "date_long" },
+        { "canonical": "binding_date",           "pdf_field": "txtBindingDate",         "transform": "date_long" },
+
+        { "canonical": "deal_is_conditional", "select_to_field": {
+            "Yes": "chkOpt_Conditional",
+            "No":  "chkOpt_Conditional"
+          }, "select_to_value": { "Yes": "/1", "No": "/2" } },
+        { "canonical": "deal_is_firm", "select_to_field": {
+            "Yes": "chkOpt_Firm",
+            "No":  "chkOpt_Firm"
+          }, "select_to_value": { "Yes": "/1", "No": "/2" } },
+        { "canonical": "deal_is_new_home", "select_to_field": {
+            "Yes": "chkOpt_NewHome",
+            "No":  "chkOpt_NewHome"
+          }, "select_to_value": { "Yes": "/1", "No": "/2" } },
+        { "canonical": "deal_based_on_net_gst", "select_to_field": {
+            "Yes": "chkOpt_NetGST",
+            "No":  "chkOpt_NetGST"
+          }, "select_to_value": { "Yes": "/1", "No": "/2" } },
+
+        { "canonical": "listing_brokerage",   "pdf_field": "txtl_broker" },
+        { "canonical": "listing_agent",       "pdf_field": "txtl_brkagent" },
+        { "canonical": "listing_agent_phone", "pdf_field": "txtl_brkphone" },
+
+        { "canonical": "seller1", "pdf_field": "txtseller1" },
+        { "canonical": "seller2", "pdf_field": "txtseller2" },
+
+        { "canonical": "buyer1_legal_name", "pdf_field": "txtbuyer1" },
+        { "canonical": "buyer2_legal_name", "pdf_field": "txtbuyer2" },
+        { "canonical": "buyer1_phone",      "pdf_field": "txtb_phone1" },
+        { "canonical": "buyer1_email",      "pdf_field": "txtb_email" },
+
+        { "canonical": "buyer_lawyer_name",     "pdf_field": "txtb_lawyername" },
+        { "canonical": "buyer_lawyer_firm",     "pdf_field": "txtb_lawyerfirm" },
+        { "canonical": "buyer_lawyer_address",  "pdf_field": "txtb_lawyeraddr" },
+        { "canonical": "buyer_lawyer_city",     "pdf_field": "txtb_lawyercity" },
+        { "canonical": "buyer_lawyer_state",    "pdf_field": "txtb_lawyerstate" },
+        { "canonical": "buyer_lawyer_zipcode",  "pdf_field": "txtb_lawyerzipcode" },
+        { "canonical": "buyer_lawyer_phone",    "pdf_field": "txtb_lawyerphone" },
+        { "canonical": "buyer_lawyer_email",    "pdf_field": "txtb_lawyeremail" },
+
+        { "canonical": "referral_brokerage", "pdf_field": "txtRefBrokerage" },
+        { "canonical": "referral_agent",     "pdf_field": "txtRefAgent" },
+        { "canonical": "referral_address",   "pdf_field": "txtRefAdd" },
+        { "canonical": "referral_city",      "pdf_field": "txtRefCity" },
+        { "canonical": "referral_state",     "pdf_field": "txtRefState" },
+        { "canonical": "referral_zipcode",   "pdf_field": "txtRefZip" },
+        { "canonical": "referral_phone",     "pdf_field": "txtRefPhone" },
+        { "canonical": "referral_fax",       "pdf_field": "txtRefFax" },
+        { "canonical": "referral_amount",    "pdf_field": "txtRefAmt" },
+
+        { "canonical": "total_commission",       "pdf_field": "txtCommission" },
+        { "canonical": "listing_commission_pct", "pdf_field": "txtListCommPer" },
+        { "canonical": "buying_commission_pct",  "pdf_field": "txtBuyCommPer" },
+        { "canonical": "commission_comments",    "pdf_field": "txtCommComments" },
+        { "canonical": "source_of_business",     "pdf_field": "txtSource" }
+      ]
+    },
+
+    "notice_waiver": {
+      "pdf": "Offer Automation/Fillable Forms/Notice (For Waiver_Satisfaction of Conditions).pdf",
+      "display_name": "Notice (For Waiver / Satisfaction of Conditions)",
+      "_comment": "Per-deal form. Filled when conditions are removed. Agent picks which conditions to include in the waiver via waiver_includes_* canonicals; post_process_notice_waiver() builds the numbered list into txtWaiverExplain. Witness fields stay blank.",
+      "mappings": [
+        { "canonical": "contract_number", "pdf_field": "txtp_PlatBook" },
+
+        { "canonical": "seller1", "pdf_field": "txtseller1" },
+        { "canonical": "seller2", "pdf_field": "txtseller2" },
+        { "canonical": "buyer1_legal_name", "pdf_field": "txtbuyer1" },
+        { "canonical": "buyer2_legal_name", "pdf_field": "txtbuyer2" },
+
+        { "canonical": "property_street_num",  "pdf_field": "txtp_streetnum" },
+        { "canonical": "property_street",      "pdf_field": "txtp_street" },
+        { "canonical": "property_unit_number", "pdf_field": "txtp_unitNumber" },
+        { "canonical": "property_city",        "pdf_field": "txtp_city" },
+        { "canonical": "property_province",    "pdf_field": "txtp_state" },
+        { "canonical": "property_zipcode",     "pdf_field": "txtp_zipcode" },
+
+        { "canonical": "waiver_party", "pdf_field": "hidBuySell" },
+
+        { "canonical": "waiver_signing_time", "pdf_field": "txtSignedTime" },
+        { "canonical": "waiver_signing_ampm", "pdf_field": "hidSignedAMPM" },
+        { "canonical": "waiver_signing_date", "pdf_field": "txtSignedDate_m",  "transform": "month_name" },
+        { "canonical": "waiver_signing_date", "pdf_field": "txtSignedDate_d",  "transform": "day_2digit" },
+        { "canonical": "waiver_signing_date", "pdf_field": "txtSignedDate_yy", "transform": "year_2digit" },
+
+        { "canonical": "waiver_signing_time", "pdf_field": "txtSignedTime2" },
+        { "canonical": "waiver_signing_ampm", "pdf_field": "hidSignedAMPM2" },
+        { "canonical": "waiver_signing_date", "pdf_field": "txtSignedDate2_m",  "transform": "month_name" },
+        { "canonical": "waiver_signing_date", "pdf_field": "txtSignedDate2_d",  "transform": "day_2digit" },
+        { "canonical": "waiver_signing_date", "pdf_field": "txtSignedDate2_yy", "transform": "year_2digit" }
+      ]
+    },
+
+    "residential_purchase_contract": {
+      "pdf": "Offer Automation/Residential Purchase Contract - Fillable.pdf",
+      "display_name": "Residential Purchase Contract",
+      "field_fonts":  { "txtOthTerms": { "face": "Helv", "size": 8 } },
+      "_comment": "Migrated from watcher.py's hardcoded map_offer_to_pdf_fields. Always-fill mappings live here; conditional condition/dower/expiry fills + the txtOthTerms paragraph composition are handled by post_process_residential_purchase_contract() in forms_engine.",
+      "mappings": [
+        { "canonical": "seller1",                 "pdf_field": "txtseller1" },
+        { "canonical": "seller2",                 "pdf_field": "txtseller2" },
+        { "canonical": "property_street_num",     "pdf_field": "txtp_streetnum" },
+        { "canonical": "property_street",         "pdf_field": "txtp_street" },
+        { "canonical": "property_city",           "pdf_field": "txtp_city" },
+        { "canonical": "property_zipcode",        "pdf_field": "txtp_zipcode" },
+        { "canonical": "property_plan",           "pdf_field": "txtp_PageNumber" },
+        { "canonical": "property_block",          "pdf_field": "txtp_Block" },
+        { "canonical": "property_lot",            "pdf_field": "txtp_LotNumber" },
+        { "canonical": "inclusions",              "pdf_field": "txtp_propincludes" },
+        { "canonical": "exclusions",              "pdf_field": "txtp_propexcludes" },
+
+        { "canonical": "listing_brokerage",       "pdf_field": "txtl_broker" },
+        { "canonical": "listing_agent",           "pdf_field": "txtl_brkagent" },
+        { "canonical": "listing_agent_phone",     "pdf_field": "txtl_brkagentph" },
+
+        { "canonical": "contract_number",         "pdf_field": "txtp_PlatBook" },
+
+        { "canonical": "buyer1_legal_name",       "pdf_field": "txtbuyer1" },
+        { "canonical": "buyer2_legal_name",       "pdf_field": "txtbuyer2" },
+
+        { "canonical": "purchase_price",          "pdf_field": "txtp_price",        "transform": "currency" },
+
+        { "canonical": "closing_date",            "pdf_field": "txtp_closedate_mmmm","transform": "month_name" },
+        { "canonical": "closing_date",            "pdf_field": "txtp_closedate_dd", "transform": "day_2digit" },
+        { "canonical": "closing_date",            "pdf_field": "txtp_closedate_yy", "transform": "year_2digit" },
+
+        { "canonical": "closing_docs",            "pdf_field": "hidBrokerage" },
+
+        { "canonical": "deposit_amount",          "pdf_field": "txtp_Deposit",      "transform": "currency" },
+        { "canonical": "deposit_method",          "pdf_field": "txtDepositMethod" },
+        { "canonical": "trustee",                 "pdf_field": "txtTrustee" },
+
+        { "canonical": "deposit_date",            "pdf_field": "txtalterDate_m",    "transform": "month_name" },
+        { "canonical": "deposit_date",            "pdf_field": "txtalterDate_d",    "transform": "day_2digit" },
+        { "canonical": "deposit_date",            "pdf_field": "txtalterDate_yy",   "transform": "year_2digit" },
+
+        { "canonical": "deposit_time",            "pdf_field": "txtampmAlter1",     "transform": "time_12hr" },
+        { "canonical": "deposit_time",            "pdf_field": "hidxampmAlter1x",   "transform": "ampm" }
+      ]
+    },
+
+    "fintrac_pep": {
+      "pdf": "Offer Automation/Fillable Forms/FINTRAC - Politically Exposed Person.pdf",
+      "display_name": "FINTRAC - Politically Exposed Person",
+      "per_individual": true,
+      "_comment": "Per-buyer form. Defaults (in defaults.json) assume non-PEP buyer (99% case): chkOpt_Determine1 (asked individual) + chkOpt_Determination4 (none of the above / not a PEP) checked. All other PEP-specific fields blank.",
+      "mappings": [
+        { "canonical": "buyer1_legal_name", "pdf_field": "txtIndividual" },
+        { "canonical": "engagement_date",   "pdf_field": "txtDetermineDate", "transform": "date_long" }
+      ]
+    },
+
+    "fintrac_individual_id": {
+      "pdf": "Offer Automation/Fillable Forms/FINTRAC - Individual Identification Information Record.pdf",
+      "display_name": "FINTRAC - Individual Identification Information Record",
+      "per_individual": true,
+      "_comment": "Generated once per buyer. Property fields are only filled when the buyer file is tied to a specific offer/property. ClientRisk + QA + totals handled by post_process_fintrac() in the filler.",
+      "mappings": [
+        { "canonical": "property_street_num",   "pdf_field": "txtp_streetnum" },
+        { "canonical": "property_street",       "pdf_field": "txtp_street" },
+        { "canonical": "property_unit_number",  "pdf_field": "txtp_unitNumber" },
+        { "canonical": "property_city",         "pdf_field": "txtp_city" },
+        { "canonical": "property_province",     "pdf_field": "txtProvince" },
+        { "canonical": "property_zipcode",      "pdf_field": "txtp_zipcode" },
+
+        { "canonical": "engagement_date", "pdf_field": "txtverifieddate1_mmmm", "transform": "month_name" },
+        { "canonical": "engagement_date", "pdf_field": "txtverifieddate1_d",    "transform": "day_2digit" },
+        { "canonical": "engagement_date", "pdf_field": "txtverifieddate1_yyyy", "transform": "year_4digit" },
+
+        { "canonical": "buyer1_legal_name",        "pdf_field": "txtindividualName" },
+        { "canonical": "buyer1_address_line_1",    "pdf_field": "txtindividualAddress1" },
+        { "canonical": "buyer1_address_line_2",    "pdf_field": "txtindividualAddress2" },
+        { "canonical": "buyer1_dob",               "pdf_field": "txtindividualDOB",  "transform": "date_long" },
+        { "canonical": "buyer1_occupation",        "pdf_field": "txtnatureOfBusinessOccupation" },
+
+        { "canonical": "buyer1_id_document_type",         "pdf_field": "txtidDocument" },
+        { "canonical": "buyer1_id_number",                "pdf_field": "txtdocIdentifierNumber" },
+        { "canonical": "buyer1_id_issuing_jurisdiction",  "pdf_field": "txtissuingJurisdiction" },
+        { "canonical": "buyer1_id_expiry_date",           "pdf_field": "txtDocExpDate", "transform": "date_long" }
+      ]
+    }
+  }
+}
