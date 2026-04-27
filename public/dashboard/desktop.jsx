@@ -33,6 +33,7 @@ function DesktopApp() {
     if (parts[0] === 'pickproperty') return { view: 'buyers', route: { name: 'pickproperty', id: parts[1] || '' } };
     if (parts[0] === 'paperwork')    return { view: 'buyers', route: { name: 'paperwork',    id: parts[1] || '' } };
     if (parts[0] === 'inputs')       return { view: 'buyers', route: { name: 'inputs',       id: parts[1] || '' } };
+    if (parts[0] === 'send')         return { view: 'buyers', route: { name: 'send',         id: parts[1] || '' } };
     if (parts[0] === 'wizard')       return { view: 'buyers', route: { name: 'wizard' } };
     if (parts[0] === 'buyer')        return { view: 'buyers', route: { name: 'detail', id: parts[1] || 'eddy-chang' } };
     return { view: 'buyers', route: { name: 'detail', id: 'eddy-chang' } };
@@ -175,6 +176,11 @@ function DesktopApp() {
             buyerId={route.id}
             onContinue={(inputs) => { setDraft(route.id, { inputs }); navigate('#/send/' + route.id); }}
             onBack={() => navigate('#/paperwork/' + route.id)}
+          />
+        ) : route.name === 'send' ? (
+          <SendStep
+            buyerId={route.id}
+            onDone={() => navigate('#/buyer/' + route.id)}
           />
         ) : route.name === 'wizard' ? (
           <WizardPane
@@ -774,6 +780,167 @@ function SchemaField({ def, value, onChange }) {
     <Field label={label} wide={wide}>
       <input type={htmlType} value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}/>
     </Field>
+  );
+}
+
+// ─── Send (Step 5) ────────────────────────────────────────────
+// Final step: writes the offer row, queues paperwork generation rows for
+// the processor to pick up. The actual PDF generation, Drive folder
+// routing, and Gmail draft summary all run in paperwork_processor.py;
+// this screen just dispatches the work and confirms it's queued.
+//
+// Sent emails are always Gmail drafts — the locked human-in-the-loop
+// rule. The processor creates a draft when the batch is complete.
+function SendStep({ buyerId, onDone }) {
+  const buyer = (Array.isArray(BUYERS) ? BUYERS : []).find(b => b.id === buyerId);
+  const draft = getDraft(buyerId);
+  const property = draft.property || {};
+  const paperwork = draft.paperwork || { crg: false, bra: false };
+  const inputs = draft.inputs || {};
+
+  const [stage, setStage] = React.useState('sending');
+  const [error, setError] = React.useState(null);
+  const [generated, setGenerated] = React.useState([]);
+
+  React.useEffect(() => {
+    if (stage !== 'sending') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const offer_id = 'O-' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+
+        // Write the offer row. The Offers tab has its own header set; we
+        // pass the full union of inputs + property and the API ignores
+        // anything that doesn't match a header.
+        const offerBody = {
+          offer_id,
+          status: 'Offer Written',
+          buyer1: buyer ? (buyer.preferred || buyer.legal || '') : '',
+          tour_id: property.source === 'tour' ? property.tour : '',
+          mls: property.mls || '',
+          ...inputs,
+          street_num: property.street_num || '',
+          street: property.street || '',
+          city: property.city || '',
+          zipcode: property.zipcode || '',
+          plan: property.plan || '',
+          block: property.block || '',
+          lot: property.lot || '',
+          seller1: property.seller1 || '',
+          seller2: property.seller2 || '',
+          listing_broker: property.listing_broker || '',
+          listing_agent: property.listing_agent || '',
+          listing_agent_ph: property.listing_agent_ph || '',
+          listing_agent_email: property.listing_agent_email || '',
+          inclusions: property.inclusions || '',
+          exclusions: property.exclusions || '',
+          contract_number: inputs.contract_number || offer_id,
+        };
+        const offerRes = await fetch('/api/offers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(offerBody),
+        });
+        if (!offerRes.ok) {
+          const e = await offerRes.json().catch(() => ({}));
+          throw new Error('Offer save failed: ' + (e.error || offerRes.status));
+        }
+
+        // Queue paperwork rows. Order: Offer always; CRG and BRA only if
+        // the agent checked them on Step 3.
+        const forms = [
+          { form_key: 'residential_purchase_contract',  label: 'Residential Purchase Contract' },
+        ];
+        if (paperwork.crg) forms.push({ form_key: 'consumer_relationships_guide',     label: 'Consumer Relationships Guide' });
+        if (paperwork.bra) forms.push({ form_key: 'buyer_representation_agreement',   label: 'Buyer Representation Agreement' });
+
+        const ids = [];
+        for (const f of forms) {
+          const r = await fetch('/api/paperwork', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ form_key: f.form_key, buyer_id: buyerId, offer_id }),
+          });
+          if (!r.ok) {
+            const e = await r.json().catch(() => ({}));
+            throw new Error(f.label + ' queue failed: ' + (e.error || r.status));
+          }
+          const j = await r.json();
+          ids.push({ ...f, paperwork_id: j.paperwork_id });
+        }
+
+        if (cancelled) return;
+        setGenerated(ids);
+        clearDraft(buyerId);
+        setStage('done');
+      } catch (err) {
+        if (cancelled) return;
+        setError(err.message);
+        setStage('error');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [stage, buyerId]);
+
+  return (
+    <div style={{ padding: "32px 40px 60px", maxWidth: 760, margin: "0 auto" }}>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: "uppercase" }}>Step 5</div>
+        <h1 style={{ margin: "4px 0 0", fontSize: 26, fontWeight: 700, letterSpacing: -0.5 }}>
+          {stage === 'done' ? 'Queued for generation' : stage === 'error' ? 'Something went wrong' : 'Sending paperwork…'}
+        </h1>
+        {buyer && property.address && (
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: T.textDim }}>
+            {displayName(buyer)} · {property.address}
+          </p>
+        )}
+      </div>
+
+      {stage === 'sending' && (
+        <Card pad={20}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ width: 12, height: 12, borderRadius: 6, background: T.accent, animation: 'pulse 1s infinite' }}/>
+            <span style={{ fontSize: 14 }}>Saving offer and queuing paperwork…</span>
+          </div>
+        </Card>
+      )}
+
+      {stage === 'error' && (
+        <>
+          <Card pad={20} style={{ marginBottom: 18 }}>
+            <p style={{ color: '#F0A5A5', fontSize: 13, margin: 0 }}>{error}</p>
+          </Card>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <Btn variant="secondary" size="md" onClick={onDone}>Back to buyer</Btn>
+            <Btn size="md" onClick={() => { setError(null); setStage('sending'); }}>Retry</Btn>
+          </div>
+        </>
+      )}
+
+      {stage === 'done' && (
+        <>
+          <Card pad={20} style={{ marginBottom: 18 }}>
+            <SectionLabel>Queued</SectionLabel>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+              {generated.map((f, i) => (
+                <li key={f.paperwork_id} style={{ padding: '10px 0', display: 'flex', alignItems: 'center', gap: 10, borderTop: i === 0 ? 'none' : `1px solid ${T.border}` }}>
+                  <svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7l3 3l7-7" stroke={T.accent} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span style={{ fontSize: 13, fontWeight: 500 }}>{f.label}</span>
+                  <span style={{ marginLeft: 'auto', fontFamily: T.mono, fontSize: 11, color: T.textMute }}>{f.paperwork_id}</span>
+                </li>
+              ))}
+            </ul>
+            <p style={{ fontSize: 12, color: T.textDim, marginTop: 14, lineHeight: 1.5 }}>
+              The paperwork processor will generate the PDFs and drop them in your Drive folder.
+              When the batch is complete, you'll find a Gmail draft with the folder link.
+            </p>
+          </Card>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Btn size="md" onClick={onDone}>Done →</Btn>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
