@@ -79,6 +79,35 @@ function DesktopApp() {
     const ok = await patchBuyerStatus(buyerId, next);
     if (ok) setStatusBump((n) => n + 1);
   };
+  const onDeleteBuyer = async (buyerId) => {
+    const buyer = (Array.isArray(BUYERS) ? BUYERS : []).find((b) => b.id === buyerId);
+    const name = buyer ? displayName(buyer) : 'this buyer';
+    const ok = window.confirm(
+      `Move "${name}" to Deleted Buyers?\n\n` +
+      `They'll be archived to a "Deleted Buyers" sheet — their offers and ` +
+      `paperwork rows stay intact, and you can resurrect them later by ` +
+      `moving the row back to the Buyers tab.`
+    );
+    if (!ok) return;
+    try {
+      const res = await fetch('/api/buyers', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ buyer_id: buyerId }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Delete failed');
+      // Remove from the in-memory list and navigate to whoever's first.
+      if (Array.isArray(window.BUYERS)) {
+        window.BUYERS = window.BUYERS.filter((x) => x.id !== buyerId);
+      }
+      setStatusBump((n) => n + 1);
+      const next = Array.isArray(window.BUYERS) && window.BUYERS[0] ? window.BUYERS[0].id : '';
+      navigate(next ? '#/buyer/' + next : '#/home');
+    } catch (err) {
+      alert('Delete failed: ' + err.message);
+    }
+  };
 
   const filters = [
     { key: 'All',           test: () => true },
@@ -222,7 +251,7 @@ function DesktopApp() {
             onNewBuyer={() => navigate('#/newbuyer')}
           />
         ) : (
-          <DetailPane buyer={BUYERS.find((b) => b.id === route.id) || BUYERS[0]} onWizard={() => navigate('#/wizard')} onStatusChange={onStatusChange}/>
+          <DetailPane buyer={BUYERS.find((b) => b.id === route.id) || BUYERS[0]} onWizard={() => navigate('#/wizard')} onStatusChange={onStatusChange} onDeleteBuyer={onDeleteBuyer}/>
         )}
       </main>
     </div>
@@ -1467,7 +1496,7 @@ const FORM_KEY_BY_KIND = {
   waiver:  'notice_waiver',
 };
 
-function DetailPane({ buyer: b, onWizard, onStatusChange }) {
+function DetailPane({ buyer: b, onWizard, onStatusChange, onDeleteBuyer }) {
   const fullAddr = `${b.addr.num} ${b.addr.street}, ${b.addr.city}, ${b.addr.state} ${b.addr.zip}`;
   // Track which doc kinds are currently being requested so we can show
   // a "Requesting…" state on the corresponding button.
@@ -1537,6 +1566,7 @@ function DetailPane({ buyer: b, onWizard, onStatusChange }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <Btn variant="danger" size="sm" onClick={() => onDeleteBuyer && onDeleteBuyer(b.id)}>Delete</Btn>
           <Btn variant="secondary" size="sm">Edit</Btn>
           <Btn size="sm" onClick={onWizard} leading={
             <svg width="13" height="13" viewBox="0 0 13 13"><path d="M6.5 2v9 M2 6.5h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>

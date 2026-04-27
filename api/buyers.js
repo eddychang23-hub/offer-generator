@@ -100,6 +100,55 @@ async function ensureBuyersTab(sheets, SPREADSHEET_ID) {
   }
 }
 
+// Headers for the archive tab — same as live buyers plus deleted_at.
+const DELETED_BUYERS_HEADERS = [...BUYERS_HEADERS, 'deleted_at'];
+
+async function ensureDeletedBuyersTab(sheets, SPREADSHEET_ID) {
+  try {
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Deleted Buyers!A1:AC1',
+    });
+    const existing = (result.data.values && result.data.values[0]) || [];
+    if (existing.length === 0) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: 'Deleted Buyers!A1',
+        valueInputOption: 'RAW',
+        requestBody: { values: [DELETED_BUYERS_HEADERS] },
+      });
+    } else {
+      // Forward-compatible header migration — same pattern as the live tab.
+      const missing = DELETED_BUYERS_HEADERS.filter((h) => !existing.includes(h));
+      if (missing.length > 0) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SPREADSHEET_ID,
+          range: 'Deleted Buyers!A1',
+          valueInputOption: 'RAW',
+          requestBody: { values: [[...existing, ...missing]] },
+        });
+      }
+    }
+  } catch (err) {
+    if (err.message && err.message.includes('Unable to parse range')) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        requestBody: {
+          requests: [{ addSheet: { properties: { title: 'Deleted Buyers' } } }],
+        },
+      });
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: 'Deleted Buyers!A1',
+        valueInputOption: 'RAW',
+        requestBody: { values: [DELETED_BUYERS_HEADERS] },
+      });
+    } else {
+      throw err;
+    }
+  }
+}
+
 function newBuyerId() {
   // 6 hex chars = ~16M values. Plenty for a solo agent's lifetime.
   const r = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
@@ -202,17 +251,35 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
+      // Soft delete — moves the row to a "Deleted Buyers" tab so it can be
+      // resurrected if needed. The agent's offers and paperwork rows stay
+      // intact (they reference buyer_id, which is preserved).
       const { buyer_id } = req.body || {};
       if (!buyer_id) return res.status(400).json({ error: 'buyer_id is required' });
       const { buyers } = await listBuyers(sheets, SPREADSHEET_ID);
       const target = buyers.find(b => b.buyer_id === buyer_id);
       if (!target) return res.status(404).json({ error: 'buyer not found' });
 
-      // Look up the Buyers sheetId for the actual delete
+      // Make sure the Deleted Buyers tab exists with matching headers
+      // plus a deleted_at column tacked on.
+      await ensureDeletedBuyersTab(sheets, SPREADSHEET_ID);
+
+      // Append the row to Deleted Buyers
+      const deletedAt = new Date().toISOString().slice(0, 16).replace('T', ' ');
+      const archiveRow = BUYERS_HEADERS.map(h => target[h] !== undefined ? String(target[h]) : '');
+      archiveRow.push(deletedAt);
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: SPREADSHEET_ID,
+        range: 'Deleted Buyers!A:AC',
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: { values: [archiveRow] },
+      });
+
+      // Remove the live row
       const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
       const buyersSheet = meta.data.sheets.find(s => s.properties.title === 'Buyers');
       if (!buyersSheet) return res.status(500).json({ error: 'Buyers tab missing' });
-
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId: SPREADSHEET_ID,
         requestBody: {
@@ -228,7 +295,7 @@ module.exports = async function handler(req, res) {
           }],
         },
       });
-      return res.status(200).json({ success: true });
+      return res.status(200).json({ success: true, archived: true, deleted_at: deletedAt });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
