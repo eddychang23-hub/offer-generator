@@ -903,6 +903,24 @@ function SendStep({ buyerId, onDone }) {
           ids.push({ ...f, paperwork_id: j.paperwork_id });
         }
 
+        // Advance the buyer's stage to "Offer Written" — the wizard exists
+        // to write an offer, so this is a reliable auto-advance. Later
+        // stages (Pending / Firm / Closed) stay manual.
+        try {
+          await fetch('/api/buyers', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ buyer_id: buyerId, status: 'Offer Written' }),
+          });
+          if (Array.isArray(window.BUYERS)) {
+            const t = window.BUYERS.find((x) => x.id === buyerId);
+            if (t) t.status = 'Offer Written';
+          }
+        } catch (e) {
+          // Non-fatal — paperwork already queued; agent can flip status manually.
+          console.warn('Buyer status auto-advance failed:', e);
+        }
+
         if (cancelled) return;
         setGenerated(ids);
         clearDraft(buyerId);

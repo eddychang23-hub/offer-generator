@@ -15,32 +15,48 @@ const { getSheets } = require('./_sheets');
 
 const PAPERWORK_HEADERS = [
   'paperwork_id',
-  'form_key',          // e.g. 'buyer_representation_agreement'
-  'buyer_id',          // FK to Buyers tab — null for offer-only forms
-  'offer_id',          // FK to Offers tab — null for buyer-only forms
-  'status',            // requested → processing → complete | error
-  'drive_file_id',     // populated when complete
-  'drive_link',        // populated when complete
-  'error_message',     // populated when error
+  'form_key',                 // e.g. 'buyer_representation_agreement'
+  'buyer_id',                 // FK to Buyers tab — null for offer-only forms
+  'offer_id',                 // FK to Offers tab — null for buyer-only forms
+  'status',                   // requested → processing → complete | error | skipped
+  'drive_file_id',            // populated when complete
+  'drive_link',                // populated when complete
+  'error_message',             // populated when error
+  'batch_email_drafted_at',    // set on ONE row per offer_id batch when the
+                               // processor creates the Gmail summary draft;
+                               // prevents duplicate drafts on processor restart
   'created_at',
   'updated_at',
 ];
 
-const RANGE_FULL = 'Paperwork!A:J';
-const RANGE_HEADERS = 'Paperwork!A1:J1';
+const RANGE_FULL = 'Paperwork!A:K';
+const RANGE_HEADERS = 'Paperwork!A1:K1';
 
 async function ensureTab(sheets, SPREADSHEET_ID) {
   try {
     const result = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID, range: RANGE_HEADERS,
     });
-    if (!result.data.values || result.data.values.length === 0) {
+    const existing = (result.data.values && result.data.values[0]) || [];
+    if (existing.length === 0) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
         range: 'Paperwork!A1',
         valueInputOption: 'RAW',
         requestBody: { values: [PAPERWORK_HEADERS] },
       });
+    } else {
+      // Append any new columns the code knows about that aren't in the
+      // sheet yet — same forward-compatibility pattern as buyers.js.
+      const missing = PAPERWORK_HEADERS.filter((h) => !existing.includes(h));
+      if (missing.length > 0) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SPREADSHEET_ID,
+          range: 'Paperwork!A1',
+          valueInputOption: 'RAW',
+          requestBody: { values: [[...existing, ...missing]] },
+        });
+      }
     }
   } catch (err) {
     if (err.message && err.message.includes('Unable to parse range')) {
@@ -138,7 +154,7 @@ module.exports = async function handler(req, res) {
       const row = PAPERWORK_HEADERS.map(h => merged[h] !== undefined ? String(merged[h]) : '');
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `Paperwork!A${rowNum}:J${rowNum}`,
+        range: `Paperwork!A${rowNum}:K${rowNum}`,
         valueInputOption: 'RAW',
         requestBody: { values: [row] },
       });
