@@ -668,93 +668,105 @@ function PickPaperwork({ buyerId, onContinue, onBack }) {
   );
 }
 
-// ─── Form inputs (schema-driven, Step 4) ──────────────────────
-// Fetches the canonical field schema and renders only the fields the agent
-// actually needs to fill in for this deal. Filtering rules:
-//   - source must be "intake" or "offers_tab" (everything else comes from
-//     the MLS upload, the buyer record, or downstream forms)
-//   - scope must be in the included set: offer + deposit always; engagement
-//     only when BRA is being generated; waiver/buyer/property excluded
-//     (waiver is post-acceptance, buyer is already collected, property
-//     comes from the MLS parse)
-// Defaults from the schema seed on first render. Values autosave to the
-// per-buyer draft so back/forward navigation doesn't lose work.
+// ─── Form inputs (Step 4) ─────────────────────────────────────
+// Sectioned form mirroring the original offer-generator layout:
+// property, deal terms, deposit, buyer's conditions, seller's condition,
+// other terms, expiry, brokerage, dower. BRA section appears at the top
+// when the Step 3 BRA checkbox is on.
+//
+// State keys match the Offers tab columns directly (e.g. `listing_broker`,
+// `financing` not the schema canonical `listing_brokerage`,
+// `has_financing`). The Python side translates via offer_to_canonical, so
+// this gives the cleanest mapping when the SendStep POSTs to /api/offers.
+//
+// Property/seller/brokerage fields pre-fill from the MLS parse so the
+// agent can verify and edit on this one screen.
 function InputsStep({ buyerId, onContinue, onBack }) {
   const buyer = (Array.isArray(BUYERS) ? BUYERS : []).find(b => b.id === buyerId);
   const draft = getDraft(buyerId);
   const property = draft.property || {};
   const paperwork = draft.paperwork || { crg: false, bra: false };
 
-  const [schema, setSchema] = React.useState(null);
-  const [schemaError, setSchemaError] = React.useState(null);
-  const [values, setValues] = React.useState(draft.inputs || {});
+  const [values, setValues] = React.useState(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const sixMonths = new Date();
+    sixMonths.setMonth(sixMonths.getMonth() + 6);
+    const expiryIso = sixMonths.toISOString().slice(0, 10);
+    return {
+      // Property — seed from MLS parse
+      street_num: property.street_num || '',
+      street: property.street || '',
+      city: property.city || 'Edmonton',
+      zipcode: property.zipcode || '',
+      plan: property.plan || '',
+      block: property.block || '',
+      lot: property.lot || '',
+      inclusions: property.inclusions || '',
+      exclusions: property.exclusions || '',
+      // Sellers + brokerage — seed from MLS parse
+      seller1: property.seller1 || '',
+      seller2: property.seller2 || '',
+      listing_broker: property.listing_broker || '',
+      listing_agent: property.listing_agent || '',
+      listing_agent_ph: property.listing_agent_ph || '',
+      listing_agent_email: property.listing_agent_email || '',
+      // Deal terms
+      contract_number: '',
+      purchase_price: '',
+      closing_date: '',
+      closing_docs: "seller's",
+      // Deposit
+      deposit_amount: '',
+      deposit_date: '',
+      deposit_time: '',
+      deposit_method: 'Bank Draft',
+      trustee: property.listing_broker || '',
+      // Buyer's conditions
+      financing: 'No',
+      inspection: 'No',
+      buyer_sale: 'No',
+      additional_condition: 'No',
+      additional_condition_text: '',
+      condition_date: '',
+      condition_time: '21:00',
+      // Seller's condition
+      seller_condition: 'No',
+      seller_condition_text: '',
+      seller_condition_date: '',
+      seller_condition_time: '',
+      // Other terms
+      term_title_insurance: 'No',
+      title_insurance_max: '',
+      term_cleaning: 'No',
+      term_walkthrough: 'No',
+      additional_terms: '',
+      // Expiry
+      has_expiry: 'Yes',
+      expiry_date: '',
+      expiry_time: '21:00',
+      // Dower
+      dower: 'No',
+      dower_date: '',
+      dower_time: '',
+      // BRA — only used if paperwork.bra
+      engagement_date: today,
+      agreement_start_date: today,
+      agreement_expiry_date: expiryIso,
+      search_criteria_property_type: 'Residential',
+      search_criteria_market_area: 'Edmonton & surrounding areas',
+      // Override with anything saved from a prior pass through this step.
+      ...draft.inputs,
+    };
+  });
 
-  React.useEffect(() => {
-    fetch('/dashboard/field_schema.json')
-      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(setSchema)
-      .catch(err => setSchemaError(err.message));
-  }, []);
-
-  // Seed schema defaults once the schema arrives. Doesn't overwrite anything
-  // the agent (or a previous draft) already filled in.
-  React.useEffect(() => {
-    if (!schema) return;
-    setValues(prev => {
-      const next = { ...prev };
-      for (const [key, def] of Object.entries(schema.fields)) {
-        if (next[key] !== undefined && next[key] !== '') continue;
-        if (def.default === 'today') {
-          next[key] = new Date().toISOString().slice(0, 10);
-        } else if (def.default !== undefined) {
-          next[key] = def.default;
-        }
-      }
-      return next;
-    });
-  }, [schema]);
-
-  // Autosave on any change — survives back/forward.
+  // Autosave so back/forward nav doesn't lose work.
   React.useEffect(() => {
     setDraft(buyerId, { inputs: values });
   }, [values, buyerId]);
 
-  if (schemaError) {
-    return (
-      <div style={{ padding: 40, maxWidth: 760, margin: "0 auto" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Couldn't load schema</h1>
-        <p style={{ color: '#F0A5A5', fontSize: 13 }}>{schemaError}</p>
-        <p style={{ color: T.textDim, fontSize: 12, marginTop: 12 }}>
-          Expected at /dashboard/field_schema.json — make sure it's deployed.
-        </p>
-        <Btn variant="secondary" size="md" onClick={onBack} style={{ marginTop: 20 }}>← Back</Btn>
-      </div>
-    );
-  }
-  if (!schema) {
-    return <div style={{ padding: 40, color: T.textMute, textAlign: 'center' }}>Loading…</div>;
-  }
-
-  const includedScopes = new Set(['offer', 'deposit']);
-  if (paperwork.bra) includedScopes.add('engagement');
-
-  // Filter + group by scope.
-  const byScope = {};
-  for (const [key, def] of Object.entries(schema.fields)) {
-    if (def.derived) continue;
-    if (def.source !== 'intake' && def.source !== 'offers_tab') continue;
-    if (!includedScopes.has(def.scope)) continue;
-    (byScope[def.scope] = byScope[def.scope] || []).push([key, def]);
-  }
-
-  const scopeOrder = ['engagement', 'offer', 'deposit'];
-  const scopeLabels = {
-    offer: 'Offer terms',
-    deposit: 'Deposit',
-    engagement: 'Buyer Representation Agreement',
-  };
-
   const setField = (k, v) => setValues(o => ({ ...o, [k]: v }));
+  const isYes = (k) => values[k] === 'Yes';
+  const anyBuyerCondition = isYes('financing') || isYes('inspection') || isYes('buyer_sale') || isYes('additional_condition');
 
   return (
     <div style={{ padding: "32px 40px 60px", maxWidth: 760, margin: "0 auto" }}>
@@ -764,22 +776,245 @@ function InputsStep({ buyerId, onContinue, onBack }) {
           <h1 style={{ margin: "4px 0 0", fontSize: 26, fontWeight: 700, letterSpacing: -0.5 }}>Fill in the details</h1>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: T.textDim, lineHeight: 1.5 }}>
             {buyer ? `For ${displayName(buyer)}` : ''}{property.address ? ` · ${property.address}` : ''}.
-            Defaults are already applied — change only what's different for this deal.
+            Property and brokerage fields are pre-filled from the MLS parse.
           </p>
         </div>
         <Btn variant="ghost" size="sm" onClick={onBack}>← Back</Btn>
       </div>
 
-      {scopeOrder.filter(s => byScope[s]).map(scope => (
-        <Card key={scope} pad={20} style={{ marginBottom: 18 }}>
-          <SectionLabel>{scopeLabels[scope] || scope}</SectionLabel>
+      {paperwork.bra && (
+        <Card pad={20} style={{ marginBottom: 18 }}>
+          <SectionLabel>Buyer Representation Agreement</SectionLabel>
           <FieldGrid>
-            {byScope[scope].map(([key, def]) => (
-              <SchemaField key={key} def={def} value={values[key] ?? ''} onChange={(v) => setField(key, v)}/>
-            ))}
+            <Field label="Engagement date">
+              <input type="date" value={values.engagement_date} onChange={(e) => setField('engagement_date', e.target.value)} style={inputStyle}/>
+            </Field>
+            <Field label="Agreement start">
+              <input type="date" value={values.agreement_start_date} onChange={(e) => setField('agreement_start_date', e.target.value)} style={inputStyle}/>
+            </Field>
+            <Field label="Agreement expiry">
+              <input type="date" value={values.agreement_expiry_date} onChange={(e) => setField('agreement_expiry_date', e.target.value)} style={inputStyle}/>
+            </Field>
+            <Field label="Property type">
+              <input type="text" value={values.search_criteria_property_type} onChange={(e) => setField('search_criteria_property_type', e.target.value)} style={inputStyle}/>
+            </Field>
+            <Field label="Market area(s)" wide>
+              <input type="text" value={values.search_criteria_market_area} onChange={(e) => setField('search_criteria_market_area', e.target.value)} style={inputStyle}/>
+            </Field>
           </FieldGrid>
         </Card>
-      ))}
+      )}
+
+      <Card pad={20} style={{ marginBottom: 18 }}>
+        <SectionLabel>Property</SectionLabel>
+        <FieldGrid>
+          <Field label="Street #">
+            <input type="text" value={values.street_num} onChange={(e) => setField('street_num', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Street">
+            <input type="text" value={values.street} onChange={(e) => setField('street', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="City">
+            <input type="text" value={values.city} onChange={(e) => setField('city', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Postal code">
+            <input type="text" value={values.zipcode} onChange={(e) => setField('zipcode', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Plan">
+            <input type="text" value={values.plan} onChange={(e) => setField('plan', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Block">
+            <input type="text" value={values.block} onChange={(e) => setField('block', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Lot">
+            <input type="text" value={values.lot} onChange={(e) => setField('lot', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Inclusions" wide>
+            <textarea value={values.inclusions} onChange={(e) => setField('inclusions', e.target.value)} style={{ ...inputStyle, height: 60, padding: '8px 12px', resize: 'vertical' }}/>
+          </Field>
+          <Field label="Exclusions" wide>
+            <textarea value={values.exclusions} onChange={(e) => setField('exclusions', e.target.value)} style={{ ...inputStyle, height: 60, padding: '8px 12px', resize: 'vertical' }}/>
+          </Field>
+        </FieldGrid>
+      </Card>
+
+      <Card pad={20} style={{ marginBottom: 18 }}>
+        <SectionLabel>Deal terms</SectionLabel>
+        <FieldGrid>
+          <Field label="Purchase price ($)">
+            <input type="number" value={values.purchase_price} onChange={(e) => setField('purchase_price', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Closing date">
+            <input type="date" value={values.closing_date} onChange={(e) => setField('closing_date', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Closing docs provided by">
+            <select value={values.closing_docs} onChange={(e) => setField('closing_docs', e.target.value)} style={inputStyle}>
+              <option value="seller's">Seller's brokerage</option>
+              <option value="buyer's">Buyer's brokerage</option>
+            </select>
+          </Field>
+        </FieldGrid>
+      </Card>
+
+      <Card pad={20} style={{ marginBottom: 18 }}>
+        <SectionLabel>Deposit</SectionLabel>
+        <FieldGrid>
+          <Field label="Amount ($)">
+            <input type="number" value={values.deposit_amount} onChange={(e) => setField('deposit_amount', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Due date">
+            <input type="date" value={values.deposit_date} onChange={(e) => setField('deposit_date', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Due time">
+            <input type="time" value={values.deposit_time} onChange={(e) => setField('deposit_time', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Method">
+            <select value={values.deposit_method} onChange={(e) => setField('deposit_method', e.target.value)} style={inputStyle}>
+              <option value="Bank Draft">Bank Draft</option>
+              <option value="Certified Cheque">Certified Cheque</option>
+              <option value="Cheque">Cheque</option>
+              <option value="Cash">Cash</option>
+              <option value="e-transfer">e-transfer</option>
+              <option value="Wire Transfer">Wire Transfer</option>
+              <option value="Other">Other</option>
+            </select>
+          </Field>
+          <Field label="Trustee" wide hint="Defaults to listing brokerage">
+            <input type="text" value={values.trustee} onChange={(e) => setField('trustee', e.target.value)} style={inputStyle}/>
+          </Field>
+        </FieldGrid>
+      </Card>
+
+      <Card pad={20} style={{ marginBottom: 18 }}>
+        <SectionLabel>Buyer's conditions</SectionLabel>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <YesNoCheck label="Financing condition"        value={values.financing}            onChange={(v) => setField('financing', v)}/>
+          <YesNoCheck label="Property inspection"        value={values.inspection}           onChange={(v) => setField('inspection', v)}/>
+          <YesNoCheck label="Buyer's sale of existing"   value={values.buyer_sale}           onChange={(v) => setField('buyer_sale', v)}/>
+          <YesNoCheck label="Additional condition"       value={values.additional_condition} onChange={(v) => setField('additional_condition', v)}/>
+        </div>
+        {isYes('additional_condition') && (
+          <div style={{ marginTop: 10 }}>
+            <Field label="Additional condition description" wide>
+              <textarea value={values.additional_condition_text} onChange={(e) => setField('additional_condition_text', e.target.value)}
+                placeholder="Describe the condition…"
+                style={{ ...inputStyle, height: 60, padding: '8px 12px', resize: 'vertical' }}/>
+            </Field>
+          </div>
+        )}
+        {anyBuyerCondition && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${T.border}` }}>
+            <FieldGrid>
+              <Field label="Condition removal date">
+                <input type="date" value={values.condition_date} onChange={(e) => setField('condition_date', e.target.value)} style={inputStyle}/>
+              </Field>
+              <Field label="Condition removal time">
+                <input type="time" value={values.condition_time} onChange={(e) => setField('condition_time', e.target.value)} style={inputStyle}/>
+              </Field>
+            </FieldGrid>
+          </div>
+        )}
+      </Card>
+
+      <Card pad={20} style={{ marginBottom: 18 }}>
+        <SectionLabel>Seller's condition</SectionLabel>
+        <YesNoCheck label="Seller has a condition" value={values.seller_condition} onChange={(v) => setField('seller_condition', v)}/>
+        {isYes('seller_condition') && (
+          <div style={{ marginTop: 12 }}>
+            <FieldGrid>
+              <Field label="Description" wide>
+                <input type="text" value={values.seller_condition_text} onChange={(e) => setField('seller_condition_text', e.target.value)} style={inputStyle}/>
+              </Field>
+              <Field label="Deadline date">
+                <input type="date" value={values.seller_condition_date} onChange={(e) => setField('seller_condition_date', e.target.value)} style={inputStyle}/>
+              </Field>
+              <Field label="Deadline time">
+                <input type="time" value={values.seller_condition_time} onChange={(e) => setField('seller_condition_time', e.target.value)} style={inputStyle}/>
+              </Field>
+            </FieldGrid>
+          </div>
+        )}
+      </Card>
+
+      <Card pad={20} style={{ marginBottom: 18 }}>
+        <SectionLabel>Other terms</SectionLabel>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <YesNoCheck label="Buyer accepts title insurance"         value={values.term_title_insurance} onChange={(v) => setField('term_title_insurance', v)}/>
+          <YesNoCheck label="Seller to have home professionally cleaned" value={values.term_cleaning}        onChange={(v) => setField('term_cleaning', v)}/>
+          <YesNoCheck label="Buyer allowed walkthrough 24–48h before"    value={values.term_walkthrough}     onChange={(v) => setField('term_walkthrough', v)}/>
+        </div>
+        {isYes('term_title_insurance') && (
+          <div style={{ marginTop: 10 }}>
+            <Field label="Title insurance max ($)">
+              <input type="number" value={values.title_insurance_max} onChange={(e) => setField('title_insurance_max', e.target.value)} style={inputStyle}/>
+            </Field>
+          </div>
+        )}
+        <div style={{ marginTop: 14 }}>
+          <Field label="Additional terms" wide>
+            <textarea value={values.additional_terms} onChange={(e) => setField('additional_terms', e.target.value)}
+              style={{ ...inputStyle, height: 60, padding: '8px 12px', resize: 'vertical' }}/>
+          </Field>
+        </div>
+      </Card>
+
+      <Card pad={20} style={{ marginBottom: 18 }}>
+        <SectionLabel>Offer expiry</SectionLabel>
+        <YesNoCheck label="Set an offer expiry" value={values.has_expiry} onChange={(v) => setField('has_expiry', v)}/>
+        {isYes('has_expiry') && (
+          <div style={{ marginTop: 12 }}>
+            <FieldGrid>
+              <Field label="Expiry date">
+                <input type="date" value={values.expiry_date} onChange={(e) => setField('expiry_date', e.target.value)} style={inputStyle}/>
+              </Field>
+              <Field label="Expiry time">
+                <input type="time" value={values.expiry_time} onChange={(e) => setField('expiry_time', e.target.value)} style={inputStyle}/>
+              </Field>
+            </FieldGrid>
+          </div>
+        )}
+      </Card>
+
+      <Card pad={20} style={{ marginBottom: 18 }}>
+        <SectionLabel>Seller & listing brokerage</SectionLabel>
+        <FieldGrid>
+          <Field label="Seller 1">
+            <input type="text" value={values.seller1} onChange={(e) => setField('seller1', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Seller 2">
+            <input type="text" value={values.seller2} onChange={(e) => setField('seller2', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Listing brokerage" wide>
+            <input type="text" value={values.listing_broker} onChange={(e) => setField('listing_broker', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Listing agent">
+            <input type="text" value={values.listing_agent} onChange={(e) => setField('listing_agent', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Agent phone">
+            <input type="tel" value={values.listing_agent_ph} onChange={(e) => setField('listing_agent_ph', e.target.value)} style={inputStyle}/>
+          </Field>
+          <Field label="Agent email" wide>
+            <input type="email" value={values.listing_agent_email} onChange={(e) => setField('listing_agent_email', e.target.value)} style={inputStyle}/>
+          </Field>
+        </FieldGrid>
+      </Card>
+
+      <Card pad={20} style={{ marginBottom: 18 }}>
+        <SectionLabel>Dower</SectionLabel>
+        <YesNoCheck label="Dower applies" value={values.dower} onChange={(v) => setField('dower', v)}/>
+        {isYes('dower') && (
+          <div style={{ marginTop: 12 }}>
+            <FieldGrid>
+              <Field label="Dower date">
+                <input type="date" value={values.dower_date} onChange={(e) => setField('dower_date', e.target.value)} style={inputStyle}/>
+              </Field>
+              <Field label="Dower time">
+                <input type="time" value={values.dower_time} onChange={(e) => setField('dower_time', e.target.value)} style={inputStyle}/>
+              </Field>
+            </FieldGrid>
+          </div>
+        )}
+      </Card>
 
       <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
         <Btn variant="secondary" size="md" onClick={onBack}>Back</Btn>
@@ -789,32 +1024,10 @@ function InputsStep({ buyerId, onContinue, onBack }) {
   );
 }
 
-// Renders a single schema field with the right input control. Wide for
-// fields that benefit from full row width (long text labels, search criteria).
-function SchemaField({ def, value, onChange }) {
-  const label = def.label + (def.optional ? ' (optional)' : '');
-  const wide = def.input_type === 'text' && /criteria|address|inclusions|exclusions|comments|notes|terms/i.test(def.label);
-
-  if (def.input_type === 'select') {
-    return (
-      <Field label={label} wide={wide}>
-        <select value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}>
-          <option value="">—</option>
-          {(def.options || []).map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-      </Field>
-    );
-  }
-
-  const t = def.input_type;
-  const htmlType =
-    t === 'tel' || t === 'email' || t === 'date' || t === 'time' || t === 'number'
-      ? t : 'text';
-  return (
-    <Field label={label} wide={wide}>
-      <input type={htmlType} value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}/>
-    </Field>
-  );
+// Yes/No checkbox — toggles the underlying string value between 'Yes' and 'No'
+// so the Offers tab columns (which use Yes/No semantics) get the right value.
+function YesNoCheck({ label, value, onChange }) {
+  return <Check on={value === 'Yes'} onChange={(b) => onChange(b ? 'Yes' : 'No')} label={label}/>;
 }
 
 // ─── Send (Step 5) ────────────────────────────────────────────
