@@ -748,12 +748,13 @@ function InputsStep({ buyerId, onContinue, onBack }) {
       dower: 'No',
       dower_date: '',
       dower_time: '',
-      // BRA — only used if paperwork.bra
-      engagement_date: today,
-      agreement_start_date: today,
-      agreement_expiry_date: expiryIso,
-      search_criteria_property_type: 'Residential',
-      search_criteria_market_area: 'Edmonton & surrounding areas',
+      // BRA — pre-fill from the buyer record if it has a current engagement
+      // (set the first time an offer is written with BRA, reused after).
+      engagement_date:               (buyer && buyer.engagementDate)      || today,
+      agreement_start_date:          (buyer && buyer.agreementStartDate)  || today,
+      agreement_expiry_date:         (buyer && buyer.agreementExpiryDate) || expiryIso,
+      search_criteria_property_type: (buyer && buyer.searchCriteriaType)  || 'Residential',
+      search_criteria_market_area:   (buyer && buyer.searchCriteriaArea)  || 'Edmonton & surrounding areas',
       // Override with anything saved from a prior pass through this step.
       ...draft.inputs,
     };
@@ -786,7 +787,7 @@ function InputsStep({ buyerId, onContinue, onBack }) {
         <Card pad={20} style={{ marginBottom: 18 }}>
           <SectionLabel>Buyer Representation Agreement</SectionLabel>
           <FieldGrid>
-            <Field label="Engagement date">
+            <Field label="Signing date" hint="Date the buyer signs the BRA + CRG">
               <input type="date" value={values.engagement_date} onChange={(e) => setField('engagement_date', e.target.value)} style={inputStyle}/>
             </Field>
             <Field label="Agreement start">
@@ -1118,20 +1119,39 @@ function SendStep({ buyerId, onDone }) {
 
         // Advance the buyer's stage to "Offer Written" — the wizard exists
         // to write an offer, so this is a reliable auto-advance. Later
-        // stages (Pending / Firm / Closed) stay manual.
+        // stages (Pending / Firm / Closed) stay manual. When BRA is being
+        // generated, also save the engagement fields onto the buyer row so
+        // the next offer in the same engagement period auto-fills them.
         try {
+          const patch = { buyer_id: buyerId, status: 'Offer Written' };
+          if (paperwork.bra) {
+            patch.engagement_date               = inputs.engagement_date || '';
+            patch.agreement_start_date          = inputs.agreement_start_date || '';
+            patch.agreement_expiry_date         = inputs.agreement_expiry_date || '';
+            patch.search_criteria_property_type = inputs.search_criteria_property_type || '';
+            patch.search_criteria_market_area   = inputs.search_criteria_market_area || '';
+          }
           await fetch('/api/buyers', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ buyer_id: buyerId, status: 'Offer Written' }),
+            body: JSON.stringify(patch),
           });
           if (Array.isArray(window.BUYERS)) {
             const t = window.BUYERS.find((x) => x.id === buyerId);
-            if (t) t.status = 'Offer Written';
+            if (t) {
+              t.status = 'Offer Written';
+              if (paperwork.bra) {
+                t.engagementDate      = inputs.engagement_date || '';
+                t.agreementStartDate  = inputs.agreement_start_date || '';
+                t.agreementExpiryDate = inputs.agreement_expiry_date || '';
+                t.searchCriteriaType  = inputs.search_criteria_property_type || '';
+                t.searchCriteriaArea  = inputs.search_criteria_market_area || '';
+              }
+            }
           }
         } catch (e) {
           // Non-fatal — paperwork already queued; agent can flip status manually.
-          console.warn('Buyer status auto-advance failed:', e);
+          console.warn('Buyer status / BRA save failed:', e);
         }
 
         if (cancelled) return;

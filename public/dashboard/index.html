@@ -156,6 +156,13 @@ async function loadBuyersFromAPI() {
         expiry: b.id_expiry_date || '',
       },
       agreementNumber: b.agreement_number || '',
+      // Buyer-engagement fields — labeled "Signing date" (engagement_date)
+      // and friends. Pre-fill the BRA section in the wizard if set.
+      engagementDate:        b.engagement_date || '',
+      agreementStartDate:    b.agreement_start_date || '',
+      agreementExpiryDate:   b.agreement_expiry_date || '',
+      searchCriteriaType:    b.search_criteria_property_type || '',
+      searchCriteriaArea:    b.search_criteria_market_area || '',
       // Status — explicit value from the Buyers tab if set, otherwise
       // the derived default. Agent can change it via the StatusPicker
       // on the buyer detail pane.

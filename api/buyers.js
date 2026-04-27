@@ -35,13 +35,22 @@ const BUYERS_HEADERS = [
   'bra_signed_date',
   'crg_signed_date',
   'linked_tour_ids',
+  // Buyer-engagement fields — one BRA per buyer per 6-month engagement,
+  // reused across every offer in that period. Set on the buyer row the
+  // first time an offer is written with BRA checked; subsequent offers
+  // pre-fill from these values.
+  'engagement_date',                  // labeled "Signing date" in the UI
+  'agreement_start_date',
+  'agreement_expiry_date',
+  'search_criteria_property_type',
+  'search_criteria_market_area',
   'created_at',
   'updated_at',
 ];
 
-// A:W — 23 columns (W is the 23rd letter)
-const BUYERS_RANGE_FULL = 'Buyers!A:W';
-const BUYERS_RANGE_HEADERS = 'Buyers!A1:W1';
+// A:AB — 28 columns (AB is the 28th letter)
+const BUYERS_RANGE_FULL = 'Buyers!A:AB';
+const BUYERS_RANGE_HEADERS = 'Buyers!A1:AB1';
 
 async function ensureBuyersTab(sheets, SPREADSHEET_ID) {
   try {
@@ -185,7 +194,7 @@ module.exports = async function handler(req, res) {
       const row = BUYERS_HEADERS.map(h => merged[h] !== undefined ? String(merged[h]) : '');
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `Buyers!A${rowNum}:W${rowNum}`,
+        range: `Buyers!A${rowNum}:AB${rowNum}`,
         valueInputOption: 'RAW',
         requestBody: { values: [row] },
       });
