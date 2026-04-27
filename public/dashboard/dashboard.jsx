@@ -5,9 +5,9 @@ function Dashboard({ onOpenBuyer, onStartNew }) {
   const [filter, setFilter] = React.useState('All');
   const filters = [
     { key: 'All',           test: () => true },
-    { key: 'Active',        test: (b) => ['BRA Signed', 'Offer Out', 'Accepted', 'Conditions Pending'].includes(b.status) },
+    { key: 'Active',        test: (b) => ['BRA Signed', 'Offer Written', 'Pending'].includes(b.status) },
     { key: 'Showing-only',  test: (b) => b.status === 'Showings Only' },
-    { key: 'Pending Deals', test: (b) => ['Offer Out', 'Accepted', 'Pending Possession'].includes(b.status) },
+    { key: 'In Progress',   test: (b) => ['Offer Written', 'Pending', 'Firm'].includes(b.status) },
     { key: 'Closed',        test: (b) => b.status === 'Closed' },
   ];
   const counts = Object.fromEntries(filters.map((f) => [f.key, BUYERS.filter(f.test).length]));

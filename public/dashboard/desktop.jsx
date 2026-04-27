@@ -51,9 +51,9 @@ function DesktopApp() {
 
   const filters = [
     { key: 'All',           test: () => true },
-    { key: 'Active',        test: (b) => ['BRA Signed', 'Offer Out', 'Accepted'].includes(b.status) },
+    { key: 'Active',        test: (b) => ['BRA Signed', 'Offer Written', 'Pending'].includes(b.status) },
     { key: 'Showing-only',  test: (b) => b.status === 'Showings Only' },
-    { key: 'Pending Deals', test: (b) => ['Offer Out', 'Accepted', 'Pending Possession'].includes(b.status) },
+    { key: 'In Progress',   test: (b) => ['Offer Written', 'Pending', 'Firm'].includes(b.status) },
     { key: 'Closed',        test: (b) => b.status === 'Closed' },
   ];
   const visible = BUYERS
@@ -978,8 +978,8 @@ function Home({ onSelectBuyer, onStartNew, onNewBuyer }) {
 
   const safeBuyers = Array.isArray(BUYERS) ? BUYERS : [];
   const safeTours = Array.isArray(TOURS) ? TOURS : [];
-  const activeDeals = safeBuyers.filter((b) => ['Offer Out', 'Accepted', 'Conditions Pending', 'Pending Possession'].includes(b.status)).length;
-  const closingThisMonth = safeBuyers.filter((b) => b.status === 'Pending Possession').length;
+  const activeDeals = safeBuyers.filter((b) => ['Offer Written', 'Pending', 'Firm'].includes(b.status)).length;
+  const closingThisMonth = safeBuyers.filter((b) => b.status === 'Firm').length;
 
   // Showings scheduled = total upcoming property showings across all booked tours.
   const upcomingTours = safeTours.filter((t) => t.upcoming);

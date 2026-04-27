@@ -156,8 +156,10 @@ async function loadBuyersFromAPI() {
         expiry: b.id_expiry_date || '',
       },
       agreementNumber: b.agreement_number || '',
-      // Status defaults — derived later from offers/deals
-      status: b.bra_signed_date ? 'BRA Signed' : 'Showings Only',
+      // Status — explicit value from the Buyers tab if set, otherwise
+      // the derived default. Agent can change it via the StatusPicker
+      // on the buyer detail pane.
+      status: b.status || (b.bra_signed_date ? 'BRA Signed' : 'Showings Only'),
       activeAddress: null,
       bra: b.bra_signed_date || null,
       crg: b.crg_signed_date || null,

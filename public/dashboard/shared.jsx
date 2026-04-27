@@ -89,15 +89,21 @@ function BackBtn({ onClick, label = 'Back' }) {
 }
 
 // Pill-style status badge
+// Workflow stages (in order):
+//   Showings Only → BRA Signed → Offer Written → Pending → Firm → Closed
+//   - Offer Written: offer sent, awaiting seller response
+//   - Pending: seller accepted, conditions still in play
+//   - Firm: conditions waived, awaiting possession
+//   - Closed: possession completed
 const STATUS_COLOR = {
-  'Showings Only':     { bg: 'rgba(107,114,128,0.18)', fg: '#A8AEB8', dot: T.gray },
-  'BRA Signed':        { bg: 'rgba(91,141,239,0.16)',  fg: '#9BB7F0', dot: T.blue },
-  'Offer Out':         { bg: 'rgba(224,169,59,0.16)',  fg: '#E5BD6E', dot: T.amber },
-  'Accepted':          { bg: 'rgba(55,217,168,0.14)',  fg: '#7AE3C2', dot: T.green },
-  'Pending Possession':{ bg: 'rgba(169,139,232,0.16)', fg: '#C2ACEE', dot: T.purple },
-  'Closed':            { bg: 'rgba(169,139,232,0.10)', fg: '#9F8AC2', dot: T.purple },
-  'Conditions Pending':{ bg: 'rgba(224,169,59,0.16)',  fg: '#E5BD6E', dot: T.amber },
+  'Showings Only':  { bg: 'rgba(107,114,128,0.18)', fg: '#A8AEB8', dot: T.gray },
+  'BRA Signed':     { bg: 'rgba(91,141,239,0.16)',  fg: '#9BB7F0', dot: T.blue },
+  'Offer Written':  { bg: 'rgba(224,169,59,0.16)',  fg: '#E5BD6E', dot: T.amber },
+  'Pending':        { bg: 'rgba(55,217,168,0.14)',  fg: '#7AE3C2', dot: T.green },
+  'Firm':           { bg: 'rgba(169,139,232,0.16)', fg: '#C2ACEE', dot: T.purple },
+  'Closed':         { bg: 'rgba(169,139,232,0.10)', fg: '#9F8AC2', dot: T.purple },
 };
+const STATUS_OPTIONS = Object.keys(STATUS_COLOR);
 
 function StatusBadge({ status, size = 'md' }) {
   const c = STATUS_COLOR[status] || STATUS_COLOR['Showings Only'];

@@ -31,6 +31,7 @@ const BUYERS_HEADERS = [
   'id_issuing_jurisdiction',
   'id_expiry_date',
   'agreement_number',
+  'status',            // Showings Only | BRA Signed | Offer Written | Pending | Firm | Closed
   'bra_signed_date',
   'crg_signed_date',
   'linked_tour_ids',
@@ -38,9 +39,9 @@ const BUYERS_HEADERS = [
   'updated_at',
 ];
 
-// A:V — 22 columns (V is the 22nd letter)
-const BUYERS_RANGE_FULL = 'Buyers!A:V';
-const BUYERS_RANGE_HEADERS = 'Buyers!A1:V1';
+// A:W — 23 columns (W is the 23rd letter)
+const BUYERS_RANGE_FULL = 'Buyers!A:W';
+const BUYERS_RANGE_HEADERS = 'Buyers!A1:W1';
 
 async function ensureBuyersTab(sheets, SPREADSHEET_ID) {
   try {
@@ -48,16 +49,29 @@ async function ensureBuyersTab(sheets, SPREADSHEET_ID) {
       spreadsheetId: SPREADSHEET_ID,
       range: BUYERS_RANGE_HEADERS,
     });
-    if (!result.data.values || result.data.values.length === 0) {
+    const existing = (result.data.values && result.data.values[0]) || [];
+    if (existing.length === 0) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
         range: 'Buyers!A1',
         valueInputOption: 'RAW',
         requestBody: { values: [BUYERS_HEADERS] },
       });
+    } else {
+      // Append any new columns the code knows about that aren't in the
+      // sheet yet — keeps the header row forward-compatible without
+      // forcing a manual edit when we add a column to the schema.
+      const missing = BUYERS_HEADERS.filter(h => !existing.includes(h));
+      if (missing.length > 0) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SPREADSHEET_ID,
+          range: 'Buyers!A1',
+          valueInputOption: 'RAW',
+          requestBody: { values: [[...existing, ...missing]] },
+        });
+      }
     }
   } catch (err) {
-    // Tab doesn't exist — create it then write headers
     if (err.message && err.message.includes('Unable to parse range')) {
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId: SPREADSHEET_ID,
@@ -171,7 +185,7 @@ module.exports = async function handler(req, res) {
       const row = BUYERS_HEADERS.map(h => merged[h] !== undefined ? String(merged[h]) : '');
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `Buyers!A${rowNum}:V${rowNum}`,
+        range: `Buyers!A${rowNum}:W${rowNum}`,
         valueInputOption: 'RAW',
         requestBody: { values: [row] },
       });
