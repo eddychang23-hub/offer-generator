@@ -2,6 +2,25 @@
 // Reuses tokens (T) and atoms (StatusBadge, DocIcon, DocStrip, Card, Btn, Chip,
 // Input, Toggle, Check, RadioGroup, Section, fmtDate) from shared.jsx + buyer-detail.jsx.
 
+// ─── Cross-step draft state ───────────────────────────────────
+// The new-paperwork flow spans multiple URLs (#/pickproperty → #/paperwork
+// → #/inputs → #/send). Each step writes its slice into sessionStorage
+// keyed by buyer ID. Survives back/forward, clears on tab close. Cleared
+// explicitly when the flow finishes.
+function getDraft(buyerId) {
+  try {
+    const raw = sessionStorage.getItem('bf:draft:' + buyerId);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+function setDraft(buyerId, patch) {
+  const cur = getDraft(buyerId);
+  sessionStorage.setItem('bf:draft:' + buyerId, JSON.stringify({ ...cur, ...patch }));
+}
+function clearDraft(buyerId) {
+  sessionStorage.removeItem('bf:draft:' + buyerId);
+}
+
 function DesktopApp() {
   // Source of truth for navigation is window.location.hash. State mirrors
   // it so React re-renders. Browser back/forward fires hashchange, which
@@ -12,6 +31,7 @@ function DesktopApp() {
     if (parts[0] === 'home')         return { view: 'home',   route: { name: 'detail', id: 'eddy-chang' } };
     if (parts[0] === 'newbuyer')     return { view: 'buyers', route: { name: 'newbuyer' } };
     if (parts[0] === 'pickproperty') return { view: 'buyers', route: { name: 'pickproperty', id: parts[1] || '' } };
+    if (parts[0] === 'paperwork')    return { view: 'buyers', route: { name: 'paperwork',    id: parts[1] || '' } };
     if (parts[0] === 'wizard')       return { view: 'buyers', route: { name: 'wizard' } };
     if (parts[0] === 'buyer')        return { view: 'buyers', route: { name: 'detail', id: parts[1] || 'eddy-chang' } };
     return { view: 'buyers', route: { name: 'detail', id: 'eddy-chang' } };
@@ -140,7 +160,14 @@ function DesktopApp() {
         ) : route.name === 'pickproperty' ? (
           <PickProperty
             buyerId={route.id}
-            onDone={() => navigate('#/buyer/' + route.id)}
+            onContinue={(property) => { setDraft(route.id, { property }); navigate('#/paperwork/' + route.id); }}
+            onSkip={() => navigate('#/buyer/' + route.id)}
+          />
+        ) : route.name === 'paperwork' ? (
+          <PickPaperwork
+            buyerId={route.id}
+            onContinue={(paperwork) => { setDraft(route.id, { paperwork }); navigate('#/inputs/' + route.id); }}
+            onBack={() => navigate('#/pickproperty/' + route.id)}
           />
         ) : route.name === 'wizard' ? (
           <WizardPane
@@ -345,15 +372,24 @@ function NewBuyer({ onCancel, onSaved }) {
 // agent can pick a property to write an offer on, or upload a fresh
 // MLS sheet for a property that wasn't part of a tour. Skipping is
 // fine — the buyer file is already saved.
-function PickProperty({ buyerId, onDone }) {
+function PickProperty({ buyerId, onContinue, onSkip }) {
   const buyer = (Array.isArray(BUYERS) ? BUYERS : []).find(b => b.id === buyerId);
   const safeTours = Array.isArray(TOURS) ? TOURS : [];
 
-  const [selected, setSelected] = React.useState(null);  // {tour, property}
+  const [selected, setSelected] = React.useState(null);  // tour-property object
   const [mlsFile, setMlsFile] = React.useState(null);
   const [parsing, setParsing] = React.useState(false);
   const [parsed, setParsed] = React.useState(null);   // parsed fields from /api/parse-mls
   const [parseError, setParseError] = React.useState(null);
+
+  const handleContinue = () => {
+    if (parsed) {
+      const address = `${parsed.street_num || ''} ${parsed.street || ''}`.trim();
+      onContinue && onContinue({ source: 'mls', address, ...parsed });
+    } else if (selected) {
+      onContinue && onContinue({ source: 'tour', ...selected });
+    }
+  };
 
   // Read a File as base64 (strip the "data:...;base64," prefix)
   function fileToBase64(file) {
@@ -412,7 +448,7 @@ function PickProperty({ buyerId, onDone }) {
             property, or pick from a recent tour.
           </p>
         </div>
-        <Btn variant="ghost" size="sm" onClick={onDone}>Skip for now →</Btn>
+        <Btn variant="ghost" size="sm" onClick={onSkip}>Skip for now →</Btn>
       </div>
 
       <SectionLabel>Upload MLS sheet</SectionLabel>
@@ -501,9 +537,9 @@ function PickProperty({ buyerId, onDone }) {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {t.properties.map(p => {
-                  const isSel = selected && selected.tour === t.id && selected.property === p.mls;
+                  const isSel = selected && selected.tour === t.id && selected.mls === p.mls;
                   return (
-                    <button key={p.mls} onClick={() => setSelected({ tour: t.id, property: p.mls, addr: p.address })}
+                    <button key={p.mls} onClick={() => setSelected({ tour: t.id, ...p })}
                       style={{
                         all: "unset", cursor: "pointer", padding: 12, borderRadius: 8,
                         background: isSel ? "rgba(55,217,168,0.07)" : T.surface2,
@@ -523,10 +559,63 @@ function PickProperty({ buyerId, onDone }) {
       )}
 
       <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
-        <Btn variant="secondary" size="md" onClick={onDone}>Skip</Btn>
-        <Btn size="md" disabled={!selected && !parsed} onClick={onDone}>
+        <Btn variant="secondary" size="md" onClick={onSkip}>Skip</Btn>
+        <Btn size="md" disabled={!selected && !parsed} onClick={handleContinue}>
           Continue →
         </Btn>
+      </div>
+    </div>
+  );
+}
+
+// ─── Pick paperwork (post-property step) ──────────────────────
+// Step 3 of the new-paperwork flow. The Offer is always generated — we're
+// here because the agent clicked "Start New Paperwork". CRG and BRA are
+// optional add-ons. Both default to checked; agent unchecks ones already
+// signed by this buyer (auto-detection from Drive comes later).
+function PickPaperwork({ buyerId, onContinue, onBack }) {
+  const buyer = (Array.isArray(BUYERS) ? BUYERS : []).find(b => b.id === buyerId);
+  const draft = getDraft(buyerId);
+  const property = draft.property;
+  const seeded = draft.paperwork || { crg: true, bra: true };
+
+  const [crg, setCRG] = React.useState(seeded.crg);
+  const [bra, setBRA] = React.useState(seeded.bra);
+
+  const handleContinue = () => {
+    onContinue && onContinue({ crg, bra });
+  };
+
+  return (
+    <div style={{ padding: "32px 40px 60px", maxWidth: 760, margin: "0 auto" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: T.textMute, letterSpacing: 0.6, textTransform: "uppercase" }}>
+            Step 3
+          </div>
+          <h1 style={{ margin: "4px 0 0", fontSize: 26, fontWeight: 700, letterSpacing: -0.5 }}>
+            Generate paperwork
+          </h1>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: T.textDim, lineHeight: 1.5 }}>
+            {buyer ? `For ${displayName(buyer)}` : ''}{property?.address ? ` · ${property.address}` : ''}.
+            The Offer is always generated. Check additional documents to include.
+          </p>
+        </div>
+        <Btn variant="ghost" size="sm" onClick={onBack}>← Back</Btn>
+      </div>
+
+      <Card pad={20} style={{ marginBottom: 18 }}>
+        <SectionLabel>Generating</SectionLabel>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+          <Check on={true} onChange={() => {}} label="Residential Purchase Contract (Offer)" sub="Always generated"/>
+          <Check on={crg} onChange={setCRG} label="Consumer Relationships Guide (CRG)" sub="Required at first showing or offer time. Skip if buyer has already signed one."/>
+          <Check on={bra} onChange={setBRA} label="Buyer Representation Agreement (BRA)" sub="6-month engagement. Skip if a current BRA is already on file."/>
+        </div>
+      </Card>
+
+      <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+        <Btn variant="secondary" size="md" onClick={onBack}>Back</Btn>
+        <Btn size="md" onClick={handleContinue}>Continue →</Btn>
       </div>
     </div>
   );
