@@ -1,4 +1,4 @@
-const { getSheets } = require('./_sheets');
+const { getSheets, colLetter, readActualHeaders } = require('./_sheets');
 
 const OFFERS_HEADERS = [
   'offer_id', 'status', 'tour_id', 'mls', 'buyer1', 'buyer2',
@@ -89,20 +89,27 @@ module.exports = async function handler(req, res) {
       await ensureOffersHeaders(sheets, SPREADSHEET_ID);
       const data = req.body;
 
-      // Build row from data, matching header order
+      // Read actual sheet headers — when columns get added to OFFERS_HEADERS
+      // later, the migration appends them at the end of the sheet, so the
+      // sheet's order can drift from the constant's order. Writing in the
+      // constant's order would scramble values across columns.
+      const actual = await readActualHeaders(sheets, SPREADSHEET_ID, 'Offers!A1:BZ1');
+      const useHeaders = actual.length > 0 ? actual : OFFERS_HEADERS;
+
       const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
-      const row = OFFERS_HEADERS.map(h => {
+      const row = useHeaders.map(h => {
         if (h === 'created_at') return data.created_at || now;
         if (h === 'updated_at') return now;
         return data[h] !== undefined ? String(data[h]) : '';
       });
+      const lastCol = colLetter(useHeaders.length);
 
       if (data._rowIndex) {
         // Update existing row
         const rowNum = data._rowIndex;
         await sheets.spreadsheets.values.update({
           spreadsheetId: SPREADSHEET_ID,
-          range: `Offers!A${rowNum}:BC${rowNum}`,
+          range: `Offers!A${rowNum}:${lastCol}${rowNum}`,
           valueInputOption: 'RAW',
           requestBody: { values: [row] },
         });
@@ -111,7 +118,7 @@ module.exports = async function handler(req, res) {
         // Append new row
         await sheets.spreadsheets.values.append({
           spreadsheetId: SPREADSHEET_ID,
-          range: 'Offers!A:BC',
+          range: `Offers!A:${lastCol}`,
           valueInputOption: 'RAW',
           insertDataOption: 'INSERT_ROWS',
           requestBody: { values: [row] },

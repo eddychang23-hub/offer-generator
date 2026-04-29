@@ -11,7 +11,7 @@
 // buyer_id is auto-generated as `B-{6 hex chars}` so buyers can be referenced
 // stably even if the row index shifts.
 
-const { getSheets } = require('./_sheets');
+const { getSheets, colLetter, readActualHeaders } = require('./_sheets');
 
 const BUYERS_HEADERS = [
   'buyer_id',
@@ -210,7 +210,13 @@ module.exports = async function handler(req, res) {
       const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
       const buyer_id = data.buyer_id || newBuyerId();
 
-      const row = BUYERS_HEADERS.map(h => {
+      // Read the actual sheet header order — migrations append new columns
+      // at the end, so the live sheet order can differ from BUYERS_HEADERS.
+      // Writing in the constant's order would scramble values across columns.
+      const actual = await readActualHeaders(sheets, SPREADSHEET_ID, BUYERS_RANGE_HEADERS);
+      const useHeaders = actual.length > 0 ? actual : BUYERS_HEADERS;
+
+      const row = useHeaders.map(h => {
         if (h === 'buyer_id') return buyer_id;
         if (h === 'created_at') return data.created_at || now;
         if (h === 'updated_at') return now;
@@ -219,7 +225,7 @@ module.exports = async function handler(req, res) {
 
       await sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
-        range: BUYERS_RANGE_FULL,
+        range: `Buyers!A:${colLetter(useHeaders.length)}`,
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
         requestBody: { values: [row] },
@@ -232,7 +238,7 @@ module.exports = async function handler(req, res) {
       if (!data.buyer_id) {
         return res.status(400).json({ error: 'buyer_id is required' });
       }
-      const { buyers } = await listBuyers(sheets, SPREADSHEET_ID);
+      const { headers, buyers } = await listBuyers(sheets, SPREADSHEET_ID);
       const existing = buyers.find(b => b.buyer_id === data.buyer_id);
       if (!existing) {
         return res.status(404).json({ error: 'buyer not found' });
@@ -240,10 +246,11 @@ module.exports = async function handler(req, res) {
       const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
       const merged = { ...existing, ...data, updated_at: now };
       const rowNum = existing._rowIndex;
-      const row = BUYERS_HEADERS.map(h => merged[h] !== undefined ? String(merged[h]) : '');
+      const useHeaders = (headers && headers.length > 0) ? headers : BUYERS_HEADERS;
+      const row = useHeaders.map(h => merged[h] !== undefined ? String(merged[h]) : '');
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `Buyers!A${rowNum}:AB${rowNum}`,
+        range: `Buyers!A${rowNum}:${colLetter(useHeaders.length)}${rowNum}`,
         valueInputOption: 'RAW',
         requestBody: { values: [row] },
       });

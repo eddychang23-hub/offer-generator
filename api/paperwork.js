@@ -11,7 +11,7 @@
 //
 // Auto-creates the Paperwork tab on first call.
 
-const { getSheets } = require('./_sheets');
+const { getSheets, colLetter, readActualHeaders } = require('./_sheets');
 
 const PAPERWORK_HEADERS = [
   'paperwork_id',
@@ -118,9 +118,14 @@ module.exports = async function handler(req, res) {
       const { form_key, buyer_id, offer_id } = req.body || {};
       if (!form_key) return res.status(400).json({ error: 'form_key is required' });
 
+      // Use the actual header order from the sheet (migrations append new
+      // columns at the end, so the constant's order can drift from reality).
+      const actual = await readActualHeaders(sheets, SPREADSHEET_ID, RANGE_HEADERS);
+      const useHeaders = actual.length > 0 ? actual : PAPERWORK_HEADERS;
+
       const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
       const paperwork_id = newId();
-      const row = PAPERWORK_HEADERS.map(h => {
+      const row = useHeaders.map(h => {
         if (h === 'paperwork_id') return paperwork_id;
         if (h === 'form_key')     return form_key;
         if (h === 'buyer_id')     return buyer_id || '';
@@ -133,7 +138,7 @@ module.exports = async function handler(req, res) {
 
       await sheets.spreadsheets.values.append({
         spreadsheetId: SPREADSHEET_ID,
-        range: RANGE_FULL,
+        range: `Paperwork!A:${colLetter(useHeaders.length)}`,
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
         requestBody: { values: [row] },
@@ -144,17 +149,18 @@ module.exports = async function handler(req, res) {
     if (req.method === 'PATCH') {
       const data = req.body || {};
       if (!data.paperwork_id) return res.status(400).json({ error: 'paperwork_id is required' });
-      const { items } = await listAll(sheets, SPREADSHEET_ID);
+      const { headers, items } = await listAll(sheets, SPREADSHEET_ID);
       const existing = items.find(p => p.paperwork_id === data.paperwork_id);
       if (!existing) return res.status(404).json({ error: 'paperwork row not found' });
 
       const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
       const merged = { ...existing, ...data, updated_at: now };
       const rowNum = existing._rowIndex;
-      const row = PAPERWORK_HEADERS.map(h => merged[h] !== undefined ? String(merged[h]) : '');
+      const useHeaders = (headers && headers.length > 0) ? headers : PAPERWORK_HEADERS;
+      const row = useHeaders.map(h => merged[h] !== undefined ? String(merged[h]) : '');
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `Paperwork!A${rowNum}:K${rowNum}`,
+        range: `Paperwork!A${rowNum}:${colLetter(useHeaders.length)}${rowNum}`,
         valueInputOption: 'RAW',
         requestBody: { values: [row] },
       });
